@@ -45,12 +45,20 @@ for (const file of files) {
   }
 }
 
-const html = await readFile(resolve('index.html'), 'utf8');
-for (const file of [resolve('src/main.js'), resolve('src/ui.js')]) {
-  const source = await readFile(file, 'utf8');
-  for (const match of source.matchAll(/querySelector\(['"]#([^'"]+)['"]\)/g)) {
-    if (!html.includes(`id="${match[1]}"`)) {
-      throw new Error(`Missing #${match[1]} in index.html (referenced by ${file})`);
+for (const [page, sources] of [
+  ['index.html', ['src/main.js', 'src/ui.js']],
+  ['bitmask.html', ['src/bitmask/test.js']]
+]) {
+  const html = await readFile(resolve(page), 'utf8');
+  for (const file of sources) {
+    const source = await readFile(resolve(file), 'utf8');
+    for (const match of source.matchAll(/querySelector\(['"]#([^'"]+)['"]\)/g)) {
+      if (!html.includes(`id="${match[1]}"`)) throw new Error(`Missing #${match[1]} in ${page}`);
+    }
+    // The isolated test declares its complete ID list in one array.
+    const declared = source.match(/Object\.fromEntries\(\[([^\]]+)\]/);
+    if (declared) for (const match of declared[1].matchAll(/'([^']+)'/g)) {
+      if (!html.includes(`id="${match[1]}"`)) throw new Error(`Missing #${match[1]} in ${page}`);
     }
   }
 }

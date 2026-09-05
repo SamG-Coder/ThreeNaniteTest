@@ -45,6 +45,12 @@ Regression tests check exact leaf coverage/winding, parent boundary matching, bo
 
 Design references: [meshoptimizer cluster hierarchy example](https://github.com/zeux/meshoptimizer/blob/master/demo/clusterlod.h) and [Epic's Nanite documentation](https://dev.epicgames.com/documentation/unreal-engine/nanite-virtualized-geometry-in-unreal-engine). This implementation uses a simpler nested tree.
 
+## Bitmask Raster Test
+
+Open **Controls → Bitmask Raster Test**, or [open the isolated test](https://samg-coder.github.io/ThreeNaniteTest/bitmask.html). It uses 32-bit atomic OR to collect tile-local triangle candidates and writes separate depth and triangle-ID textures in a per-pixel resolve. Four masks represent 128 candidates per tile; overflow uses an explicit exhaustive fallback. Select a fixture and press **Check GPU result** to compare with an exhaustive GPU reference for that frame.
+
+Read the [specification and acceptance criteria](docs/BITMASK_RASTER_TEST.md). This is a controlled custom rasterizer test, not geometry streaming or a forest performance claim. Device validation remains pending until the GPU checks run on a WebGPU browser.
+
 ## GitHub Pages
 
 The Pages workflow builds and tests pushes to `main`, then deploys the Vite `dist` output.

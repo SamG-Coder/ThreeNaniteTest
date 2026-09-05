@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#080d17" />
+  <title>Bitmask Raster Test — WebGPU</title>
+</head>
+<body>
+  <canvas id="canvas" aria-label="Bitmask rasterization test. Drag to rotate the geometry."></canvas>
+  <main>
+    <header><div><p class="eyebrow">THREE.JS GEOMETRY · CUSTOM WEBGPU RASTERIZER</p><h1>Bitmask Raster Test</h1></div><a href="./">Return to forest</a></header>
+    <p id="status" role="status">Compiling WebGPU test…</p>
+    <div class="controls">
+      <label>Scene<select id="fixture"><option value="torus">Torus knot</option><option value="bit31">Bit 31 · 32 overlaps</option><option value="overflow">Overflow · 160 overlaps</option><option value="tie">Equal depth</option><option value="edge">Shared edge</option></select></label>
+      <label>Resolution<select id="resolution"><option value="256">256 px maximum</option><option value="384" selected>384 px maximum</option><option value="512">512 px maximum</option></select></label>
+      <label>View<select id="view"><option value="0">Triangle colors</option><option value="1">Triangle IDs</option><option value="2">Depth · amplified</option><option value="3">Mask population</option><option value="4">Overflow tiles</option><option value="5" disabled>GPU mismatches</option></select></label>
+      <label class="toggle"><input id="animate" type="checkbox" checked /> Animate</label>
+      <button id="reset" type="button">Reset rotation</button>
+      <button id="validate" type="button" disabled>Check GPU result</button>
+    </div>
+    <p id="metrics">Preparing test buffers…</p>
+    <p id="validation" role="status">GPU correctness: not checked</p>
+    <details><summary>What this test does</summary><p>Triangles mark coverage with 32-bit atomic OR. Each pixel then selects a winner and writes separate depth and triangle-ID textures. Four masks allow 128 candidates per 8×8 tile. Magenta tiles overflow and use a slower exhaustive fallback; geometry is not discarded.</p><p>“Check GPU result” pauses motion and compares this frame with an exhaustive GPU reference. Green means matching pixels; red means a failure. Drag or change the scene to invalidate the check.</p><p>This is a controlled rasterization test, not the forest renderer or a streaming system. FPS includes all test passes at the stated internal resolution and is not a forest performance comparison.</p><p><a href="https://github.com/SamG-Coder/ThreeNaniteTest/blob/main/docs/BITMASK_RASTER_TEST.md">Read the specification</a></p></details>
+    <pre id="error" role="alert" hidden></pre>
+  </main>
+  <footer>Drag or swipe to rotate · 32-bit masks · separate depth / visibility</footer>
+  <script type="module" src="/src/bitmask/test.js"></script>
+</body>
+</html>
