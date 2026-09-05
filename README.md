@@ -252,3 +252,5 @@ In the main forest's **Rasterizer** dropdown, select **Bitmask · visible dispat
 This variant generates indirect bin dispatch arguments from GPU-visible cluster counts without a CPU readback. It also skips projected triangle bounds that contain no pixel centres before allocating tile entries. Coverage, depth and shading use the original bitmask algorithm. This is not Nanite or geometry streaming.
 
 The production shaders match the original depth/ID checksum on the exported forest in SwiftShader; see [measured result](docs/emulation-gpu/indirect-bounded.json). Software-adapter timings do not predict phone FPS.
+
+[Repeated main-forest stage profile](docs/EMULATED_STAGE_PROFILE.md): production original and bounded shaders at 384×704, with warm-up excluded and per-stage timing distributions. In this software-adapter run, tile rasterization becomes the largest measured stage after the dispatch optimisation. GPU selection and browser presentation are outside the harness.

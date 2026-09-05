@@ -6,7 +6,8 @@ import {forestOwnedMaskWGSL} from '../../src/bitmask/forestOwnedMaskShaders.js';
 import {forestRasterWGSL} from '../../src/bitmask/forestShaders.js';
 import {forestRejectWGSL} from '../../src/bitmask/forestRejectShaders.js';
 const out=process.argv[2]??'/tmp/forest-gpu';mkdirSync(out,{recursive:true});
-const s=await prepareForest({width:160,height:288,pitch:-.05});
+const flags=Object.fromEntries(process.argv.slice(3).map(arg=>arg.replace(/^--/,'').split('=')));
+const s=await prepareForest({width:Number(flags.width??160),height:Number(flags.height??288),pitch:Number(flags.pitch??-.05),yaw:Number(flags.yaw??0),density:flags.density??'high',geometry:flags.geometry??'full',project:false});
 const {assets,matrices,selected,vp,camera,world}=s.gpu;
 const save=(name,data)=>writeFileSync(`${out}/${name}.bin`,new Uint8Array(data.buffer,data.byteOffset,data.byteLength));
 for(let a=0;a<2;a++){
@@ -18,10 +19,10 @@ for(let a=0;a<2;a++){
  save(`${a}-visible`,Uint32Array.from(selected.filter(v=>v.a===a).flatMap(v=>[v.instance,v.cluster])));
 }
 const params=new ArrayBuffer(128),f=new Float32Array(params),u=new Uint32Array(params);f.set(vp.elements);f.set([...camera.position.toArray(),1],16);u.set([s.width,s.height,Math.ceil(s.width/8),Math.ceil(s.width/8)*Math.ceil(s.height/8)],20);
-const capacity=assets.map((a,i)=>a.lods[0].clusterCount*(i?world.treeInstances.length/4:1));
+const capacity=s.geometry==='full'?assets.map((a,i)=>a.lods[0].clusterCount*(i?world.treeInstances.length/4:1)):[8192,32768];
 u.set([...capacity,...assets.map(a=>a.indices.length)],24);u.set([8388608,0,0,Math.min(65535,capacity[0]+capacity[1])],28);save('params',new Uint8Array(params));
 for(const [variant,code] of Object.entries({bounded:forestBoundedWGSL,original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL,reject:forestRejectWGSL}))writeFileSync(`${out}/${variant}.wgsl`,code);
-writeFileSync(`${out}/manifest.json`,JSON.stringify({width:s.width,height:s.height,counts:s.counts,sourceTriangles:s.sourceTriangles,capacity,geometry:'full',density:'high',camera:s.camera,selection:'CPU equivalent of cull, deterministic slot order'},null,2));
+writeFileSync(`${out}/manifest.json`,JSON.stringify({width:s.width,height:s.height,counts:s.counts,sourceTriangles:s.sourceTriangles,capacity,geometry:s.geometry,density:s.density,cpuTimingsMs:s.cpuTimingsMs,camera:s.camera,selection:'CPU equivalent of cull, deterministic slot order'},null,2));
 console.log('Exported actual forest GPU buffers',out,s.counts);
 
 writeFileSync(`${out}/dispatch.wgsl`,forestDispatchWGSL);

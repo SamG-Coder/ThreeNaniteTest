@@ -1,0 +1,335 @@
+{
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 384,
+    "height": 704,
+    "counts": {
+      "groupsVisited": 8320,
+      "groupsRejected": 7383,
+      "meshletsTested": 50249,
+      "frustumRejected": 7659,
+      "coneRejected": 692,
+      "actualTriangles": 2649588,
+      "paddedTriangleSlots": 2681472,
+      "asset0": 1097,
+      "asset1": 40801,
+      "binDispatchInvocations": 29359680,
+      "idleBinInvocations": 26678208
+    },
+    "sourceTriangles": 28172160,
+    "capacity": [
+      6713,
+      439808
+    ],
+    "geometry": "full",
+    "density": "high",
+    "cpuTimingsMs": {
+      "sceneBuild": 2395.3830040000003,
+      "assetBuild": 5184.418319,
+      "selection": 44.6148919999996,
+      "projection": null
+    },
+    "camera": {
+      "position": [
+        0,
+        4.1146040622323286,
+        62
+      ],
+      "pitch": -0.05,
+      "yaw": 0,
+      "fov": 50
+    },
+    "selection": "CPU equivalent of cull, deterministic slot order"
+  },
+  "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+  "stats": 0,
+  "dispatch": "production",
+  "emptyBoundsExperiment": false,
+  "stageNames": [
+    "clear",
+    "bin",
+    "raster",
+    "dispatchArgs"
+  ],
+  "warmup": 2,
+  "samples": 5,
+  "limitations": [
+    "Software Vulkan timings are not phone GPU timings",
+    "Selection is a separately timed CPU equivalent, not the Three GPU selection shader",
+    "Scene/asset construction is startup work; excluded from raster timings",
+    "No sky/water, Three presentation or hardware raster baseline",
+    "Depth/ID comparisons do not establish shading parity with hardware"
+  ],
+  "runs": [
+    {
+      "variant": "original",
+      "dispatch": "capacity",
+      "summaryMs": {
+        "clear": {
+          "median": 0.213794,
+          "min": 0.169276,
+          "max": 0.451211,
+          "p95": 0.451211
+        },
+        "bin": {
+          "median": 4010.164789,
+          "min": 3943.52109,
+          "max": 5466.083326,
+          "p95": 5466.083326
+        },
+        "raster": {
+          "median": 1416.881958,
+          "min": 1229.100558,
+          "max": 2153.952635,
+          "p95": 2153.952635
+        },
+        "totalGpu": {
+          "median": 5360.616842,
+          "min": 5239.716558,
+          "max": 7216.801013,
+          "p95": 7216.801013
+        },
+        "submitToReadback": {
+          "median": 5368.101660002139,
+          "min": 5240.238160004083,
+          "max": 7217.367252000258,
+          "p95": 7217.367252000258
+        }
+      },
+      "sourceSHA256": "f66135afc80b2938ef2a59ad3dd1f3708490f4885532bdf5b5cbc98f1013ee31",
+      "timings": [
+        {
+          "warmup": true,
+          "wallSeconds": 6.292506316000072,
+          "stagesMs": [
+            2.069216,
+            3718.536527,
+            2007.874023
+          ]
+        },
+        {
+          "warmup": true,
+          "wallSeconds": 4.902974579003057,
+          "stagesMs": [
+            0.456557,
+            3563.109752,
+            1338.850882
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 5.368101660002139,
+          "stagesMs": [
+            0.213794,
+            3943.52109,
+            1416.881958
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 5.240238160004083,
+          "stagesMs": [
+            0.451211,
+            4010.164789,
+            1229.100558
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 5.350292264003656,
+          "stagesMs": [
+            0.207156,
+            4007.425478,
+            1342.065994
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 7.217367252000258,
+          "stagesMs": [
+            0.169276,
+            5062.679102,
+            2153.952635
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 7.078111565999279,
+          "stagesMs": [
+            0.256066,
+            5466.083326,
+            1611.288076
+          ]
+        }
+      ],
+      "depthMaxDifference": 0.0,
+      "idMismatches": 0,
+      "counters": [
+        1097,
+        40801,
+        1642483,
+        0,
+        253189,
+        53878,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": "05204868c6fcad710ea0ae6af02e55fbaa776f3f659e8b4c76b640c7b24eb9f9"
+    },
+    {
+      "variant": "bounded",
+      "dispatch": "indirect",
+      "summaryMs": {
+        "clear": {
+          "median": 0.240091,
+          "min": 0.183464,
+          "max": 0.3331,
+          "p95": 0.3331
+        },
+        "bin": {
+          "median": 559.873091,
+          "min": 534.935746,
+          "max": 681.936424,
+          "p95": 681.936424
+        },
+        "raster": {
+          "median": 878.698261,
+          "min": 826.454148,
+          "max": 949.882264,
+          "p95": 949.882264
+        },
+        "dispatchArgs": {
+          "median": 0.020178,
+          "min": 0.011384,
+          "max": 0.053593,
+          "p95": 0.053593
+        },
+        "totalGpu": {
+          "median": 1483.625442,
+          "min": 1385.33578,
+          "max": 1607.676309,
+          "p95": 1607.676309
+        },
+        "submitToReadback": {
+          "median": 1484.1884059933363,
+          "min": 1385.73288799671,
+          "max": 1608.1655689995387,
+          "p95": 1608.1655689995387
+        }
+      },
+      "sourceSHA256": "e0fcef3aa8155095d1e1a37b5075755a7f8cd557718c6a7fe7b407082aa50a96",
+      "timings": [
+        {
+          "warmup": true,
+          "wallSeconds": 1.9703695439966395,
+          "stagesMs": [
+            0.330713,
+            742.370475,
+            905.135951,
+            0.02361
+          ]
+        },
+        {
+          "warmup": true,
+          "wallSeconds": 1.492275453005277,
+          "stagesMs": [
+            0.175063,
+            686.987848,
+            804.329995,
+            0.024761
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.4841884059933363,
+          "stagesMs": [
+            0.203386,
+            636.533183,
+            846.867317,
+            0.021556
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.4144037450023461,
+          "stagesMs": [
+            0.183464,
+            534.935746,
+            878.698261,
+            0.053593
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.6081655689995387,
+          "stagesMs": [
+            0.269799,
+            681.936424,
+            925.458702,
+            0.011384
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.38573288799671,
+          "stagesMs": [
+            0.240091,
+            558.621363,
+            826.454148,
+            0.020178
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.51075819000107,
+          "stagesMs": [
+            0.3331,
+            559.873091,
+            949.882264,
+            0.01792
+          ]
+        }
+      ],
+      "depthMaxDifference": 0.0,
+      "idMismatches": 0,
+      "counters": [
+        1097,
+        40801,
+        734903,
+        0,
+        253189,
+        25496,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": "05204868c6fcad710ea0ae6af02e55fbaa776f3f659e8b4c76b640c7b24eb9f9"
+    }
+  ]
+}

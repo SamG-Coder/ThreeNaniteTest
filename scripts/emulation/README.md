@@ -32,3 +32,23 @@ python scripts/emulation/run-swiftshader.py /tmp/forest-gpu --variants=bounded -
 ```
 
 The first command executes six production argument-generation cases (including empty, clamped and multirow counts). The second executes the production bounds rejection and indirect bin pass, comparing depth/IDs against an existing capacity baseline when present.
+
+### Repeated stage profiling
+
+Export a reproducible full-detail forest at a mobile-sized render resolution:
+
+```sh
+node scripts/emulation/export-gpu.mjs /tmp/forest-profile --width=384 --height=704 --pitch=-0.05
+```
+
+With `VK_ICD_FILENAMES` set as above:
+
+```sh
+python scripts/emulation/run-swiftshader.py /tmp/forest-profile --variants=original,bounded --dispatch=production --warmup=2 --samples=5 --output=/tmp/forest-profile/profile.json
+```
+
+`production` uses the actual capacity dispatch for the original and GPU-generated indirect dispatch for bounded. Each mode gets its own warm-up; shader compilation and asset upload are excluded. The report includes raw samples plus median/min/max/nearest-rank p95 for clear, bin, raster, indirect argument generation (when used), their summed GPU duration and submit-to-readback wall time. With five samples, p95 is simply the maximum: this is a short comparison, not a frame-pacing study.
+
+The exporter records CPU scene construction, asset construction and a single CPU-equivalent selection duration separately. These are **not GPU selection timings** and must not be added to the raster totals. Projection is skipped for GPU export, avoiding unnecessary CPU triangle emulation. `--geometry=full|auto|hierarchy`, `--density`, `--yaw`, `--pitch`, `--width` and `--height` configure export. Keep each workload in its own directory so existing baseline checksums describe the same camera and assets.
+
+The native run uses the real source raster WGSL with the documented packed-vertex binding adaptation. It does not execute Three.js selection, sky/water, presentation, hardware rasterization, or phone drivers. The camera is a fixed spawn view, not recovered from the screenshots. Compare hotspot proportions within this adapter; don't convert them into estimated phone milliseconds.

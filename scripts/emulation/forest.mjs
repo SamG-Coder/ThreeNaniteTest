@@ -4,11 +4,14 @@ import {buildNaniteLiteAsset} from '../../src/buildNaniteLiteAsset.js';
 import {buildHierarchyAsset} from '../../src/buildHierarchyAsset.js';
 import {clipNearPlane} from '../../src/bitmask/reference.js';
 
-export async function prepareForest({density='high',geometry='full',width=384,height=704,pitch=.55,yaw=0,threshold=4.5}={}){
+export async function prepareForest({density='high',geometry='full',width=384,height=704,pitch=.55,yaw=0,threshold=4.5,project=true}={}){
  if(!['full','auto','hierarchy'].includes(geometry))throw new Error('Unknown geometry mode');
+ const started=performance.now();
  const world=createForestScene(density);
+ const sceneBuilt=performance.now();
  const build=geometry==='hierarchy'?buildHierarchyAsset:buildNaniteLiteAsset;
  const assets=[await build(world.geometry,{meshletsPerGroup:64}),await build(world.treeGeometry,{meshletsPerGroup:64})];
+ const assetsBuilt=performance.now();
  const camera=new THREE.PerspectiveCamera(50,width/height,.1,500);camera.coordinateSystem=THREE.WebGPUCoordinateSystem;camera.updateProjectionMatrix();
  camera.position.set(0,world.heightAt(0,62)+1.7,62);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();
  const vp=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
@@ -47,12 +50,13 @@ export async function prepareForest({density='high',geometry='full',width=384,he
    }
   }
  }
+ const selectionFinished=performance.now();
  // Float32 storage matches the shader's projected data format; operations use
  // JS arithmetic, so GPU FMA/rounding and parallel atomic order are not emulated.
- const projected=new Float32Array(counts.paddedTriangleSlots*14),ids=new Uint32Array(counts.paddedTriangleSlots);
+ const projected=new Float32Array((project?counts.paddedTriangleSlots:0)*14),ids=new Uint32Array(project?counts.paddedTriangleSlots:0);
  let primitiveCount=0;const setup={paddingSlots:counts.paddedTriangleSlots-counts.actualTriangles,nearClipped:0,backfaceOrDegenerate:0,outsideViewport:0};
  const v=new THREE.Vector4();
- for(const s of selected){
+ for(const s of project?selected:[]){
   const asset=assets[s.a],worldMatrix=matrices[s.a][s.instance];
   for(let t=0;t<64;t++){
    if(t>=asset.clusterTriangleCounts[s.cluster])continue; // Counted as work in report; result is provably degenerate.
@@ -71,5 +75,5 @@ export async function prepareForest({density='high',geometry='full',width=384,he
  }
  const capacity=geometry==='full'?assets[0].lods[0].clusterCount+assets[1].lods[0].clusterCount*world.treeInstances.length/4:8192+32768;
  const dispatchWidth=Math.min(capacity,65535);counts.binDispatchInvocations=dispatchWidth*Math.ceil(capacity/dispatchWidth)*64;counts.idleBinInvocations=counts.binDispatchInvocations-counts.paddedTriangleSlots;
- return {gpu:{assets,matrices,selected,vp,camera,world},projected,ids,primitiveCount,width,height,counts,setup,sourceTriangles:assets[0].sourceTriangleCount+assets[1].sourceTriangleCount*world.treeInstances.length/4,assetBytes:assets.reduce((n,a)=>n+a.bytes,0),camera:{position:camera.position.toArray(),pitch,yaw,fov:50},geometry,density};
+ return {cpuTimingsMs:{sceneBuild:sceneBuilt-started,assetBuild:assetsBuilt-sceneBuilt,selection:selectionFinished-assetsBuilt,projection:project?performance.now()-selectionFinished:null},gpu:{assets,matrices,selected,vp,camera,world},projected,ids,primitiveCount,width,height,counts,setup,sourceTriangles:assets[0].sourceTriangleCount+assets[1].sourceTriangleCount*world.treeInstances.length/4,assetBytes:assets.reduce((n,a)=>n+a.bytes,0),camera:{position:camera.position.toArray(),pitch,yaw,fov:50},geometry,density};
 }
