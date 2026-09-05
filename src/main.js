@@ -10,6 +10,9 @@ import {
 } from './buildNaniteLiteAsset.js';
 import { NaniteLiteRenderer } from './NaniteLiteRenderer.js';
 import { DemoUI } from './ui.js';
+import { createGameScene } from './gameScene.js';
+import { GameControls } from './gameControls.js';
+import { FrameMeter } from './frameMeter.js';
 
 const ui = new DemoUI();
 const canvas = document.querySelector('#viewport');
@@ -19,10 +22,26 @@ let camera;
 let controls;
 let pipeline = null;
 let rebuildGeneration = 0;
+let gameControls = null;
+let activeWorld = null;
+let sceneBuilding = true;
+let lastFrameAt = null;
+const frameMeter = new FrameMeter(sample => ui.updateFps(sample));
+ui.onRenderModeChange = () => { frameMeter.reset(); ui.clearFps(); };
 const mobileProfile = window.matchMedia('(pointer: coarse)').matches;
 const pixelRatioLimit = mobileProfile ? 1 : 2;
 
 function resetCamera() {
+  if (activeWorld) {
+    if (gameControls?.enabled) gameControls.reset();
+    else {
+      camera.position.set(35, 36, 48);
+      controls.target.set(0, 5, -20);
+      controls.update();
+    }
+    pipeline?.invalidateOcclusionHistory();
+    return;
+  }
   camera.position.set(0, 21, 55);
   controls.target.set(0, 1.5, -7);
   controls.update();
@@ -80,8 +99,12 @@ async function geometryFromGlb(file) {
   }
 }
 
-async function rebuildScene(geometry, displayName) {
+async function rebuildScene(geometry, displayName, world = null) {
   const generation = ++rebuildGeneration;
+  sceneBuilding = true;
+  frameMeter.reset();
+  ui.clearFps();
+  gameControls?.setEnabled(false);
 
   ui.showLoading('Building Nanite Lite asset', 'Preparing source geometry…');
   ui.setAssetName(displayName);
@@ -90,6 +113,7 @@ async function rebuildScene(geometry, displayName) {
   await new Promise((resolve) => requestAnimationFrame(resolve));
 
   const asset = await buildNaniteLiteAsset(geometry, {
+    meshletsPerGroup: world ? 32 : 16,
     onProgress(title, detail) {
       if (generation === rebuildGeneration) ui.updateLoading(title, detail);
     }
@@ -97,19 +121,32 @@ async function rebuildScene(geometry, displayName) {
 
   if (generation !== rebuildGeneration) { geometry.dispose(); return; }
 
-  pipeline?.dispose();
-  pipeline = new NaniteLiteRenderer(renderer, camera, asset, {
+  const nextPipeline = new NaniteLiteRenderer(renderer, camera, asset, {
     sourceGeometry: geometry,
-    gridSize: mobileProfile ? 7 : 14,
+    gridSize: world ? 1 : mobileProfile ? 7 : 14,
+    gameScene: Boolean(world),
     maxVisibleClusters: mobileProfile ? 8192 : 16384,
     onStats: (stats) => ui.updateStats(stats)
   });
 
+  pipeline?.dispose();
+  pipeline = nextPipeline;
+  gameControls?.dispose();
+  gameControls = null;
+  activeWorld = world;
+  controls.enabled = !world;
+  if (world) {
+    gameControls = new GameControls(camera, canvas, world, ui.gameElements);
+    gameControls.setEnabled(true);
+  }
+  ui.setGameScene(Boolean(world));
   geometry.dispose();
   ui.createLodBars(asset.lods.length);
   ui.bindPipeline(pipeline);
   resetCamera();
   ui.hideLoading();
+  sceneBuilding = false;
+  frameMeter.reset();
 
   console.table(
     asset.lods.map((lod) => ({
@@ -168,8 +205,12 @@ async function initialise() {
   resetCamera();
 
   renderer.setAnimationLoop((time) => {
-    controls.update();
-    pipeline?.render(time);
+    const dt = lastFrameAt === null ? 0 : (time - lastFrameAt) / 1000;
+    lastFrameAt = time;
+    if (controls.enabled) controls.update();
+    if (!sceneBuilding) gameControls?.update(dt);
+    if (!sceneBuilding) pipeline?.render(time);
+    frameMeter.tick(time, Boolean(pipeline) && !sceneBuilding && !document.hidden);
   });
 
   window.addEventListener('resize', () => {
@@ -180,7 +221,20 @@ async function initialise() {
     pipeline?.resize();
   });
 
+  document.addEventListener('visibilitychange', () => { frameMeter.reset(); lastFrameAt = null; });
   ui.onResetCamera = resetCamera;
+  ui.onNavigationMode = walking => {
+    if (!gameControls) return;
+    gameControls.setEnabled(walking);
+    controls.enabled = !walking;
+    resetCamera();
+  };
+  ui.onTerrain = async () => {
+    try {
+      const world = createGameScene(mobileProfile);
+      await rebuildScene(world.geometry, 'Highland ruins · terrain, forest and stonework', world);
+    } catch (error) { ui.showFatalError(error); }
+  };
   ui.onRestoreDefault = async () => {
     try {
       await rebuildScene(createDefaultGeometry(), 'Procedural torus knot');
@@ -197,12 +251,14 @@ async function initialise() {
     } catch (error) {
       console.error(error);
       ui.hideLoading();
+      sceneBuilding = false;
+      if (activeWorld) gameControls?.setEnabled(true);
       ui.setStatus('GLB load failed', true);
       window.alert(`Unable to load ${file.name}: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
-  await rebuildScene(createDefaultGeometry(), 'Procedural torus knot');
+  await ui.onTerrain();
 }
 
 initialise().catch((error) => {

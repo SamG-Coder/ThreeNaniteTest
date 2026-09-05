@@ -19,6 +19,11 @@ export class DemoUI {
   constructor() {
     this.elements = {
       statusPill: document.querySelector('#status-pill'),
+      fpsValue: document.querySelector('#fps-value'),
+      frameMs: document.querySelector('#frame-ms'),
+      terrainSample: document.querySelector('#terrain-sample'),
+      navigationMode: document.querySelector('#navigation-mode'),
+      gameHud: document.querySelector('#game-hud'),
       outputMode: document.querySelector('#output-mode'),
       naniteEnabled: document.querySelector('#nanite-enabled'),
       naniteView: document.querySelector('#nanite-view'),
@@ -50,6 +55,11 @@ export class DemoUI {
       overflowWarning: document.querySelector('#overflow-warning')
     };
 
+    this.gameElements = {
+      stick: document.querySelector('#move-stick'),
+      thumb: document.querySelector('#move-thumb'),
+      jump: document.querySelector('#jump-button')
+    };
     this.pipeline = null;
     this.onAssetFile = null;
     this.onRestoreDefault = null;
@@ -61,6 +71,13 @@ export class DemoUI {
   }
 
   bindEvents() {
+    this.elements.terrainSample.addEventListener('click', () => this.onTerrain?.());
+    this.elements.navigationMode.addEventListener('click', () => {
+      const walking = this.elements.navigationMode.getAttribute('aria-pressed') !== 'true';
+      this.elements.navigationMode.setAttribute('aria-pressed',String(walking));
+      this.elements.navigationMode.textContent = walking ? 'Walking' : 'Orbit camera';
+      this.onNavigationMode?.(walking);
+    });
     this.elements.outputMode.addEventListener('change', () => this.syncRendererControls());
     this.elements.naniteEnabled.addEventListener('change', () => {
       this.pipeline?.setNaniteEnabled(this.elements.naniteEnabled.checked);
@@ -69,6 +86,7 @@ export class DemoUI {
       this.elements.capacity.textContent = '—';
       this.elements.overflowWarning.classList.add('hidden');
       this.syncRendererControls();
+      this.onRenderModeChange?.();
     });
     this.elements.naniteView.addEventListener('change', () => this.syncRendererControls());
     this.elements.panelToggle.addEventListener('click', () => {
@@ -126,6 +144,26 @@ export class DemoUI {
     pipeline.setOcclusionEnabled(this.elements.occlusionEnabled.checked);
     pipeline.setConeEnabled(this.elements.coneEnabled.checked);
     pipeline.setOccludersVisible(this.elements.occludersVisible.checked);
+  }
+
+  updateFps({fps, ms}) {
+    this.elements.fpsValue.textContent = fps.toFixed(0);
+    this.elements.frameMs.textContent = `${ms.toFixed(1)} ms`;
+  }
+
+  clearFps() {
+    this.elements.fpsValue.textContent = '—';
+    this.elements.frameMs.textContent = '— ms';
+  }
+
+  setGameScene(enabled) {
+    this.elements.gameHud.hidden = !enabled;
+    this.elements.navigationMode.hidden = !enabled;
+    this.elements.navigationMode.setAttribute('aria-pressed', 'true');
+    this.elements.navigationMode.textContent = 'Walking';
+    this.elements.occludersVisible.disabled = enabled;
+    this.elements.occludersVisible.closest('label').hidden = enabled;
+    if (enabled) this.setPanelOpen(false);
   }
 
   setPanelOpen(open) {

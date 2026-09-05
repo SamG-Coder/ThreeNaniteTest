@@ -8,12 +8,12 @@
   </head>
   <body>
     <div id="app">
-      <canvas id="viewport" aria-label="3D Nanite comparison. Drag to orbit; pinch to zoom." tabindex="0"></canvas>
+      <canvas id="viewport" aria-label="3D landscape. Walk with WASD or the touch joystick; drag to look." tabindex="0"></canvas>
 
       <header class="topbar glass">
         <div>
           <div class="eyebrow">THREE.JS · WEBGPU · GPU DRIVEN</div>
-          <h1>Nanite Lite</h1>
+          <h1>Highland Ruins</h1>
         </div>
         <div id="status-pill" class="status-pill">Initialising WebGPU</div>
       </header>
@@ -22,7 +22,8 @@
         <label class="toggle"><input id="nanite-enabled" type="checkbox" checked /><span>Nanite</span></label>
         <label class="toggle"><input id="nanite-view" type="checkbox" /><span>Nanite view</span></label>
         <button id="panel-toggle" type="button" aria-controls="controls-panel" aria-expanded="true">Controls</button>
-        <span id="mode-description" role="status">Nanite on · shaded</span>
+        <div class="live-readout"><span id="mode-description" role="status">Nanite on · shaded</span>
+          <span class="fps-readout" title="Animation-frame cadence; not GPU execution time"><strong id="fps-value">—</strong> FPS <span id="frame-ms">— ms</span></span></div>
       </nav>
 
       <aside id="controls-panel" class="panel glass" aria-label="Nanite Lite controls">
@@ -61,14 +62,18 @@
         </section>
 
         <section>
-          <h2>Asset</h2>
-          <div id="asset-name" class="asset-name">Procedural torus knot</div>
+          <h2>Scene</h2>
+          <div class="scene-buttons">
+            <button id="terrain-sample" type="button">Highland ruins</button>
+            <button id="navigation-mode" type="button" aria-pressed="true">Walking</button>
+          </div>
+          <div id="asset-name" class="asset-name">Highland ruins</div>
           <p class="muted">Load a binary glTF. The largest mesh is normalised and rebuilt into boundary-locked meshlet groups in the browser.</p>
           <label class="file-button">
             <input id="asset-file" type="file" accept=".glb,model/gltf-binary" />
             Load .glb
           </label>
-          <button id="restore-default" type="button" class="secondary-button">Restore procedural demo</button>
+          <button id="restore-default" type="button" class="secondary-button">Mesh stress test</button>
         </section>
 
         <section>
@@ -87,12 +92,20 @@
         </section>
 
         <section class="actions">
-          <button id="reset-camera" type="button">Reset camera</button>
+          <button id="reset-camera" type="button">Reset position</button>
         </section>
       </aside>
 
+      <div id="game-hud" hidden>
+        <div class="crosshair" aria-hidden="true">+</div>
+        <div class="touch-game-controls">
+          <div id="move-stick" aria-label="Touch movement joystick"><span id="move-thumb"></span></div>
+          <button id="jump-button" type="button">Jump</button>
+        </div>
+      </div>
       <footer class="help glass">
-        <span class="desktop-help">Drag to orbit · wheel to zoom · right-drag to pan</span><span class="touch-help">One finger: orbit · pinch: zoom · two fingers: pan</span>
+        <span class="orbit-help"><span class="desktop-help">Drag to orbit · wheel to zoom · right-drag to pan</span><span class="touch-help">One finger: orbit · pinch: zoom · two fingers: pan</span></span>
+        <span class="walk-help"><span class="desktop-help">Click scene to look · WASD move · Shift sprint · Space jump · Esc release</span><span class="touch-help">Left stick: move · swipe scene: look · Jump</span></span>
       </footer>
 
       <div id="loading" class="loading visible" role="status" aria-live="polite">

@@ -482,3 +482,26 @@ input[type="range"] { min-height: 44px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
+
+.live-readout { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px 16px; }
+.live-readout #mode-description { flex-basis: auto; }
+.fps-readout { font-size: .875rem; color: #b3cba6; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fps-readout strong { font-size: 1.15rem; color: #eff8d9; }
+#frame-ms { color: #9baebe; margin-left: 8px; font-size: .75rem; }
+.scene-buttons { display: flex; gap: 8px; margin-bottom: 12px; }
+.walk-help, .touch-game-controls, .crosshair { display: none; }
+.walking .walk-help { display: inline; }
+.walking .orbit-help { display: none; }
+.walking .crosshair { display: block; position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); color: #ffffffa0; pointer-events: none; font: 22px monospace; }
+.pointer-locked .crosshair { color: white; }
+@media (pointer: coarse) {
+  .walking .touch-game-controls { display: flex; position: fixed; inset: auto max(20px,env(safe-area-inset-right)) max(46px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); align-items: end; justify-content: space-between; pointer-events: none; z-index: 3; }
+  #move-stick { width: 116px; height: 116px; border-radius: 50%; border: 1px solid #ffffff50; background: #07101955; display: grid; place-items: center; touch-action: none; pointer-events: auto; }
+  #move-thumb { width: 46px; height: 46px; border-radius: 50%; background: #d8e9ed88; border: 1px solid #ffffff80; pointer-events: none; }
+  #jump-button { width: 76px; height: 64px; border-radius: 50%; background: #07101988; pointer-events: auto; touch-action: manipulation; }
+  body:has(.panel:not([hidden])) .touch-game-controls { visibility: hidden; }
+}
+@media (max-width: 380px) {
+  .quick-controls { gap: 4px 8px; }
+  .quick-controls button { padding: 0 8px; }
+}

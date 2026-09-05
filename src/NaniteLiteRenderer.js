@@ -79,6 +79,8 @@ export class NaniteLiteRenderer {
     this.renderer = renderer;
     this.camera = camera;
     this.asset = asset;
+    this.gameScene = Boolean(options.gameScene);
+    this.sourceColors = options.sourceGeometry?.getAttribute('color');
 
     this.maxVisibleClusters = options.maxVisibleClusters ?? MAX_VISIBLE_CLUSTERS;
     this.gridSize = options.gridSize ?? INSTANCE_GRID_SIZE;
@@ -114,6 +116,12 @@ export class NaniteLiteRenderer {
     this.computeNodes = [];
 
     this.createStaticScene();
+    if (this.gameScene) {
+      this.floor.visible = false;
+      this.occluderGroup.visible = false;
+      this.scene.background = new THREE.Color(0xabc6d1);
+      this.scene.fog = new THREE.Fog(0xabc6d1, 55, 155);
+    }
     this.createScreenResources();
     this.createGpuPipeline();
     this.createBaselineMesh(options.sourceGeometry);
@@ -357,7 +365,9 @@ export class NaniteLiteRenderer {
       createStorageAttribute(asset.groupLods, 4), 'vec4', asset.groupCount * asset.lods.length
     ).toReadOnly();
 
-    const instanceData = createInstanceData(this.gridSize, this.spacing);
+    const instanceData = this.gameScene
+      ? new Float32Array([0, 0, 0, 1])
+      : createInstanceData(this.gridSize, this.spacing);
     this.instanceDataAttribute = createStorageAttribute(instanceData, 4);
     const instanceDataBuffer = storage(
       this.instanceDataAttribute,
@@ -700,6 +710,17 @@ export class NaniteLiteRenderer {
       instanceWorldRead
     } = buffers;
 
+    let colorBuffer = null;
+    if (this.sourceColors) {
+      const colors = new Float32Array(this.asset.vertexCount * 4);
+      for (let i = 0; i < this.asset.vertexCount; i++) {
+        colors.set([this.sourceColors.getX(i), this.sourceColors.getY(i), this.sourceColors.getZ(i), 1], i * 4);
+      }
+      const attribute = new THREE.StorageBufferAttribute(colors, 4);
+      this.disposableAttributes.push(attribute);
+      colorBuffer = storage(attribute, 'vec4', this.asset.vertexCount).toReadOnly();
+    }
+    const vColor = varyingProperty('vec3', 'vSourceColor');
     const vWorldNormal = varyingProperty('vec3', 'vWorldNormal');
     const vUv = varyingProperty('vec2', 'vUv');
     const vClusterId = varyingProperty('uint', 'vClusterId');
@@ -722,6 +743,7 @@ export class NaniteLiteRenderer {
         worldMatrix.mul(vec4(normalBuffer.element(sourceVertex).xyz, 0.0)).xyz
       );
 
+      if (colorBuffer) vColor.assign(colorBuffer.element(sourceVertex).xyz);
       vWorldNormal.assign(worldNormal);
       vUv.assign(uvBuffer.element(sourceVertex));
       vClusterId.assign(clusterId);
@@ -755,7 +777,7 @@ export class NaniteLiteRenderer {
 
     const shadedMaterial = new THREE.MeshStandardNodeMaterial();
     shadedMaterial.positionNode = pulledPosition;
-    shadedMaterial.colorNode = mix(
+    shadedMaterial.colorNode = colorBuffer ? vColor : mix(
       color(0x36516f),
       color(0xc9b78e),
       checker.mul(0.72)
@@ -823,7 +845,11 @@ export class NaniteLiteRenderer {
     }
     const checker = floor(uv().x.mul(14)).add(floor(uv().y.mul(14))).mod(2);
     const material = new THREE.MeshStandardNodeMaterial();
-    material.colorNode = mix(color(0x36516f), color(0xc9b78e), checker.mul(0.72));
+    if (geometry.hasAttribute('color')) {
+      material.vertexColors = true;
+    } else {
+      material.colorNode = mix(color(0x36516f), color(0xc9b78e), checker.mul(0.72));
+    }
     material.roughnessNode = float(0.58);
     material.metalnessNode = float(0.12);
     this.baselineMesh = new THREE.InstancedMesh(geometry, material, this.instanceCount);
@@ -882,7 +908,7 @@ export class NaniteLiteRenderer {
   }
 
   setOccludersVisible(visible) {
-    this.occluderGroup.visible = Boolean(visible);
+    this.occluderGroup.visible = !this.gameScene && Boolean(visible);
     this.invalidateOcclusionHistory();
   }
 

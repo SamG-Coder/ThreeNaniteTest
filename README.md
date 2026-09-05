@@ -4,7 +4,7 @@ A runnable GPU-driven geometry prototype for **Three.js 0.185.1** and WebGPU.
 
 This is not Unreal Engine Nanite. It implements a deliberately smaller and understandable subset that is useful in a browser renderer:
 
-- Spatial groups of up to 16 leaf meshlets, each with its own GPU-selected LOD
+- Spatial groups of up to 32 leaf meshlets in the terrain scene (16 in the mesh stress test), each with its own GPU-selected LOD
 - Explicit shared-boundary, open-border and attribute-seam vertex locks
 - 64-vertex / 64-triangle meshlets
 - Per-group and per-meshlet GPU frustum culling
@@ -18,7 +18,9 @@ This is not Unreal Engine Nanite. It implements a deliberately smaller and under
 - Live GPU readback statistics and LOD distribution
 - Runtime `.glb` import for the largest static mesh
 
-The project starts with a procedural torus knot containing 65,536 source triangles. It places 196 instances in the scene, representing roughly 12.8 million source triangles before visibility and LOD selection.
+The project starts in **Highland Ruins**, a walkable mountain valley with a trail, pine trees, boulders and a ruined stone courtyard. Terrain and props are merged into one colored static source mesh and processed by the grouped Nanite Lite pipeline. Nanite off draws that same full-resolution geometry with the same colors, camera, lighting and placement.
+
+The original torus-knot stress test is available under **Controls → Mesh stress test**. It uses 196 instances on desktop and 49 on coarse-pointer devices.
 
 ## GitHub Pages
 
@@ -27,13 +29,23 @@ In repository **Settings → Pages → Build and deployment**, choose **GitHub A
 The project URL is https://samg-coder.github.io/ThreeNaniteTest/ after the deployment succeeds.
 Relative asset paths support the repository subdirectory and local preview.
 
+## Playable terrain and FPS
+
+- Desktop: click the scene to capture the mouse; **WASD / arrow keys** move, **Shift** sprints, **Space** jumps, and **Escape** releases the mouse to reach the interface.
+- Mobile: use the left joystick to move, swipe the scene to look, and tap **Jump**.
+- Walking follows the terrain height with gravity and simple obstacle collision for trees, rocks and ruin walls. Collision is approximate; this is an explorable rendering sample, with no combat or objectives.
+- Switch **Walking / Orbit camera** in Controls to inspect the whole landscape. **Reset position** restores the spawn or overview.
+- The terrain uses a 256×256 grid on desktop and 160×160 on coarse-pointer devices. Identical vertices are welded before meshlet building, with 32 leaf meshlets per group to reduce startup work. Props use the same deterministic placement on both. The scene is built once per load; switching Nanite does not regenerate it.
+- **FPS** and average **ms/frame** stay visible beside the render-mode label and update twice per second. They measure animation-frame cadence, not isolated GPU time. Hidden tabs and asset-building periods are excluded; switching Nanite resets the sample. Display refresh rate can cap FPS.
+- Trees, rocks, ruin stonework and terrain all take part in the Nanite comparison. There is no separate low-detail substitute when Nanite is disabled.
+
 ## Comparison and mobile
 
 - **Nanite** toggles between the grouped meshlet pipeline and full-resolution indexed instancing. Both use the same source geometry, transforms, lighting, camera and procedural material. Disabling Nanite bypasses its compute passes and HZB work.
 - **Nanite view** toggles the chosen meshlet, LOD or normal visualization. Turn it off to return to shaded rendering. Visualization and Nanite-only controls are disabled in full-resolution mode.
 - **Controls** opens or closes the settings drawer. It starts closed on small screens; Escape closes it for keyboard users.
 - Touch: one finger orbits; pinch zooms; two fingers pan.
-- Coarse-pointer devices start with 49 instances, an 8,192-meshlet capacity and pixel ratio capped at 1 to reduce mobile load. Desktop uses 196 instances and the existing 16,384-meshlet capacity. Full-resolution mode can be substantially slower.
+- The game scene uses one identity instance. Coarse-pointer devices use an 8,192-meshlet capacity and pixel ratio capped at 1; desktop uses 16,384 meshlets and a pixel ratio capped at 2. The optional mesh stress test uses 49 or 196 instances respectively. Full-resolution mode can be slower.
 - Mobile layout does not remove the WebGPU hardware requirement: the adapter must support 12 storage buffers per shader stage. Unsupported devices show an explanation.
 - Full-resolution statistics show source triangles submitted for all instances. Nanite statistics count padded 64-triangle meshlet slots; these are submission counts, not exact visible triangle or performance measurements.
 
@@ -84,6 +96,9 @@ npm test
 src/
   partitionMeshlets.js        Spatial leaf grouping and conservative boundary locks
   main.js                    Application bootstrap, camera and GLB loading
+  gameScene.js               Terrain, forest, ruins, colors and collision layout
+  gameControls.js            First-person movement, mouse look and touch controls
+  frameMeter.js              FPS and frame interval sampling
   buildNaniteLiteAsset.js    Mesh simplification, meshlet generation and packing
   NaniteLiteRenderer.js      GPU buffers, compute culling, HZB and indirect draw
   config.js                  Meshlet, LOD and scene limits
@@ -151,7 +166,7 @@ This prototype is intentionally honest about what it does not implement:
 - All generated geometry is fully resident in GPU memory.
 - It does not stream geometry pages.
 - It uses hardware rasterization only; there is no specialised compute path for sub-pixel triangles.
-- A single procedural material is applied to Nanite Lite geometry.
+- One material is used per Nanite Lite draw. The game scene uses vertex colors; the mesh stress test uses a procedural checker. Imported material assignments remain unsupported.
 - The GLB loader selects one static mesh and ignores additional primitives and material assignments.
 - Skinned meshes, morph targets, transparency, transmission and runtime vertex displacement are unsupported.
 - Instance transforms use uniform scaling, allowing normals and culling bounds to use the same world matrix safely.
