@@ -29,6 +29,7 @@ import {
   storage,
   texture,
   uint,
+  uv,
   uniform,
   uniformArray,
   uvec2,
@@ -92,7 +93,8 @@ export class NaniteLiteRenderer {
       lodThreshold: options.lodThreshold ?? DEFAULT_LOD_THRESHOLD,
       occlusionEnabled: options.occlusionEnabled ?? false,
       coneEnabled: options.coneEnabled ?? true,
-      outputMode: options.outputMode ?? 'shaded'
+      outputMode: options.outputMode ?? 'shaded',
+      naniteEnabled: true
     };
 
     this.scene = new THREE.Scene();
@@ -114,6 +116,7 @@ export class NaniteLiteRenderer {
     this.createStaticScene();
     this.createScreenResources();
     this.createGpuPipeline();
+    this.createBaselineMesh(options.sourceGeometry);
     this.setOutputMode(this.settings.outputMode);
   }
 
@@ -809,13 +812,54 @@ export class NaniteLiteRenderer {
     this.scene.add(this.naniteMesh);
   }
 
+  createBaselineMesh(sourceGeometry) {
+    if (!sourceGeometry) throw new Error('The full-resolution comparison requires source geometry.');
+    const geometry = sourceGeometry.clone();
+    if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+    if (!geometry.getAttribute('uv')) {
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
+        this.asset.uvs.slice(), 2
+      ));
+    }
+    const checker = floor(uv().x.mul(14)).add(floor(uv().y.mul(14))).mod(2);
+    const material = new THREE.MeshStandardNodeMaterial();
+    material.colorNode = mix(color(0x36516f), color(0xc9b78e), checker.mul(0.72));
+    material.roughnessNode = float(0.58);
+    material.metalnessNode = float(0.12);
+    this.baselineMesh = new THREE.InstancedMesh(geometry, material, this.instanceCount);
+    const data = this.instanceDataAttribute.array;
+    const matrix = new THREE.Matrix4();
+    for (let i = 0; i < this.instanceCount; i++) {
+      // Match the column-major matrix in computeCull, including its rotation sign.
+      const scale = data[i * 4 + 3];
+      matrix.makeRotationY(-i * 0.61803398875);
+      matrix.scale(new THREE.Vector3(scale, scale, scale));
+      matrix.setPosition(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
+      this.baselineMesh.setMatrixAt(i, matrix);
+    }
+    this.baselineMesh.instanceMatrix.needsUpdate = true;
+    this.baselineMesh.frustumCulled = false;
+    this.baselineMesh.visible = false;
+    this.scene.add(this.baselineMesh);
+  }
+
+  setNaniteEnabled(enabled) {
+    this.settings.naniteEnabled = Boolean(enabled);
+    this.naniteMesh.visible = this.settings.naniteEnabled;
+    this.baselineMesh.visible = !this.settings.naniteEnabled;
+    this.lastReadbackAt = -Infinity;
+    this.statsGeneration = (this.statsGeneration ?? 0) + 1;
+    this.invalidateOcclusionHistory();
+    this.setOutputMode(this.settings.outputMode);
+  }
+
   setOutputMode(mode) {
     if (!this.materials[mode]) return;
     this.settings.outputMode = mode;
     this.naniteMesh.material = this.materials[mode];
 
     this.renderer.toneMapping =
-      mode === 'shaded'
+      !this.settings.naniteEnabled || mode === 'shaded'
         ? THREE.ACESFilmicToneMapping
         : THREE.NoToneMapping;
   }
@@ -918,6 +962,27 @@ export class NaniteLiteRenderer {
   }
 
   render(now = performance.now()) {
+    if (!this.settings.naniteEnabled) {
+      this.renderer.setRenderTarget(this.sceneTarget);
+      this.renderer.clear();
+      this.renderer.render(this.scene, this.camera);
+      this.renderer.setRenderTarget(null);
+      this.blitQuad.render(this.renderer);
+      if (now - this.lastReadbackAt >= 500) {
+        this.lastReadbackAt = now;
+        this.onStats({
+          naniteEnabled: false,
+          sourceTriangles: this.asset.sourceTriangleCount,
+          sourceSceneTriangles: this.asset.sourceTriangleCount * this.instanceCount,
+          submittedTriangles: this.asset.sourceTriangleCount * this.instanceCount,
+          instances: this.instanceCount, groups: this.asset.groupCount,
+          lockedVertices: this.asset.lockedVertexCount, visibleMeshlets: 0,
+          capacity: 0, overflowed: false, lodCounts: this.asset.lods.map(() => 0),
+          assetBytes: this.asset.bytes
+        });
+      }
+      return;
+    }
     this.updateCameraUniforms();
 
     this.renderer.compute(this.computeClear);
@@ -928,11 +993,14 @@ export class NaniteLiteRenderer {
     this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
 
-    for (let level = 0; level < this.hzbLevelCount; level += 1) {
-      this.renderer.compute(this.hzbKernels[level]);
+    if (this.settings.occlusionEnabled) {
+      for (let level = 0; level < this.hzbLevelCount; level += 1) {
+        this.renderer.compute(this.hzbKernels[level]);
+      }
+      this.hzbValidUniform.value = 1;
+    } else {
+      this.hzbValidUniform.value = 0;
     }
-
-    this.hzbValidUniform.value = 1;
 
     this.renderer.setRenderTarget(null);
     this.blitQuad.render(this.renderer);
@@ -943,6 +1011,7 @@ export class NaniteLiteRenderer {
   async requestStatsReadback(now) {
     if (this.readbackInFlight || now - this.lastReadbackAt < 500) return;
 
+    const generation = this.statsGeneration ?? 0;
     this.readbackInFlight = true;
     this.lastReadbackAt = now;
 
@@ -968,12 +1037,15 @@ export class NaniteLiteRenderer {
         )
       ]);
 
+      if (this.disposed || !this.settings.naniteEnabled || generation !== (this.statsGeneration ?? 0)) return;
+
       const rawVisibleCount = new Uint32Array(countBuffer)[0] ?? 0;
       const visibleCount = Math.min(rawVisibleCount, this.maxVisibleClusters);
       const overflowed = (new Uint32Array(overflowBuffer)[0] ?? 0) !== 0;
       const lodCounts = Array.from(new Uint32Array(lodBuffer));
 
       this.onStats({
+        naniteEnabled: true,
         sourceTriangles: this.asset.sourceTriangleCount,
         sourceSceneTriangles: this.asset.sourceTriangleCount * this.instanceCount,
         instances: this.instanceCount,
@@ -1023,6 +1095,10 @@ export class NaniteLiteRenderer {
   }
 
   dispose() {
+    this.disposed = true;
+    this.baselineMesh?.geometry.dispose();
+    this.baselineMesh?.material.dispose();
+    this.baselineMesh?.dispose();
     this.scene.remove(this.naniteMesh);
 
     this.drawGeometry?.dispose();

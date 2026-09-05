@@ -2,13 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#090d13" />
     <title>Three.js WebGPU — Nanite Lite</title>
   </head>
   <body>
     <div id="app">
-      <canvas id="viewport"></canvas>
+      <canvas id="viewport" aria-label="3D Nanite comparison. Drag to orbit; pinch to zoom." tabindex="0"></canvas>
 
       <header class="topbar glass">
         <div>
@@ -18,15 +18,22 @@
         <div id="status-pill" class="status-pill">Initialising WebGPU</div>
       </header>
 
-      <aside class="panel glass" aria-label="Nanite Lite controls">
+      <nav class="quick-controls glass" aria-label="View controls">
+        <label class="toggle"><input id="nanite-enabled" type="checkbox" checked /><span>Nanite</span></label>
+        <label class="toggle"><input id="nanite-view" type="checkbox" /><span>Nanite view</span></label>
+        <button id="panel-toggle" type="button" aria-controls="controls-panel" aria-expanded="true">Controls</button>
+        <span id="mode-description" role="status">Nanite on · shaded</span>
+      </nav>
+
+      <aside id="controls-panel" class="panel glass" aria-label="Nanite Lite controls">
         <section>
           <h2>Renderer</h2>
+          <p class="muted">Nanite off renders the full-resolution source. Nanite view shows the selected visualization.</p>
 
           <label class="field">
-            <span>Output</span>
+            <span>Nanite visualization</span>
             <select id="output-mode">
-              <option value="shaded">Shaded</option>
-              <option value="meshlets">Meshlets</option>
+              <option value="meshlets">Meshlet clusters</option>
               <option value="lod">LOD level</option>
               <option value="normals">Normals</option>
             </select>
@@ -76,7 +83,7 @@
             <div><dt>Visible-list use</dt><dd id="stat-capacity">—</dd></div>
           </dl>
           <div id="lod-bars" class="lod-bars"></div>
-          <div id="overflow-warning" class="warning hidden">Visible-list capacity was exceeded. Raise <code>MAX_VISIBLE_CLUSTERS</code> or reduce the scene.</div>
+          <div id="overflow-warning" class="warning hidden">Meshlet capacity exceeded. Increase LOD error or load a smaller model.</div>
         </section>
 
         <section class="actions">
@@ -85,7 +92,7 @@
       </aside>
 
       <footer class="help glass">
-        Drag to orbit · wheel to zoom · right-drag to pan
+        <span class="desktop-help">Drag to orbit · wheel to zoom · right-drag to pan</span><span class="touch-help">One finger: orbit · pinch: zoom · two fingers: pan</span>
       </footer>
 
       <div id="loading" class="loading visible" role="status" aria-live="polite">

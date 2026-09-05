@@ -19,6 +19,8 @@ let camera;
 let controls;
 let pipeline = null;
 let rebuildGeneration = 0;
+const mobileProfile = window.matchMedia('(pointer: coarse)').matches;
+const pixelRatioLimit = mobileProfile ? 1 : 2;
 
 function resetCamera() {
   camera.position.set(0, 21, 55);
@@ -93,13 +95,17 @@ async function rebuildScene(geometry, displayName) {
     }
   });
 
-  if (generation !== rebuildGeneration) return;
+  if (generation !== rebuildGeneration) { geometry.dispose(); return; }
 
   pipeline?.dispose();
   pipeline = new NaniteLiteRenderer(renderer, camera, asset, {
+    sourceGeometry: geometry,
+    gridSize: mobileProfile ? 7 : 14,
+    maxVisibleClusters: mobileProfile ? 8192 : 16384,
     onStats: (stats) => ui.updateStats(stats)
   });
 
+  geometry.dispose();
   ui.createLodBars(asset.lods.length);
   ui.bindPipeline(pipeline);
   resetCamera();
@@ -117,10 +123,14 @@ async function rebuildScene(geometry, displayName) {
 
 async function initialise() {
   if (!WebGPU.isAvailable()) {
-    document.body.appendChild(WebGPU.getErrorMessage());
     throw new Error(
-      'WebGPU is unavailable. Use a current Chrome or Edge build with WebGPU enabled.'
+      'WebGPU is unavailable on this browser or device. Open this HTTPS page in a WebGPU-capable browser.'
     );
+  }
+
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter || adapter.limits.maxStorageBuffersPerShaderStage < 12) {
+    throw new Error('This device cannot run the Nanite compute pipeline. It requires WebGPU with at least 12 storage buffers per shader stage.');
   }
 
   renderer = new THREE.WebGPURenderer({
@@ -129,7 +139,7 @@ async function initialise() {
     requiredLimits: { maxStorageBuffersPerShaderStage: 12 }
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioLimit));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
 
   ui.updateLoading('Initialising WebGPU', 'Creating the Three.js WebGPU backend…');
@@ -146,6 +156,8 @@ async function initialise() {
   camera.updateProjectionMatrix();
 
   controls = new OrbitControls(camera, canvas);
+  controls.touches.ONE = THREE.TOUCH.ROTATE;
+  controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
   controls.enableDamping = true;
   controls.dampingFactor = 0.075;
   controls.minDistance = 4;
@@ -163,6 +175,7 @@ async function initialise() {
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioLimit));
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     pipeline?.resize();
   });

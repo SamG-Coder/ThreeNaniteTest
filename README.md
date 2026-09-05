@@ -20,6 +20,23 @@ This is not Unreal Engine Nanite. It implements a deliberately smaller and under
 
 The project starts with a procedural torus knot containing 65,536 source triangles. It places 196 instances in the scene, representing roughly 12.8 million source triangles before visibility and LOD selection.
 
+## GitHub Pages
+
+The Pages workflow builds and tests pushes to `main`, then deploys the Vite `dist` output.
+In repository **Settings → Pages → Build and deployment**, choose **GitHub Actions** as the source.
+The project URL is https://samg-coder.github.io/ThreeNaniteTest/ after the deployment succeeds.
+Relative asset paths support the repository subdirectory and local preview.
+
+## Comparison and mobile
+
+- **Nanite** toggles between the grouped meshlet pipeline and full-resolution indexed instancing. Both use the same source geometry, transforms, lighting, camera and procedural material. Disabling Nanite bypasses its compute passes and HZB work.
+- **Nanite view** toggles the chosen meshlet, LOD or normal visualization. Turn it off to return to shaded rendering. Visualization and Nanite-only controls are disabled in full-resolution mode.
+- **Controls** opens or closes the settings drawer. It starts closed on small screens; Escape closes it for keyboard users.
+- Touch: one finger orbits; pinch zooms; two fingers pan.
+- Coarse-pointer devices start with 49 instances, an 8,192-meshlet capacity and pixel ratio capped at 1 to reduce mobile load. Desktop uses 196 instances and the existing 16,384-meshlet capacity. Full-resolution mode can be substantially slower.
+- Mobile layout does not remove the WebGPU hardware requirement: the adapter must support 12 storage buffers per shader stage. Unsupported devices show an explanation.
+- Full-resolution statistics show source triangles submitted for all instances. Nanite statistics count padded 64-triangle meshlet slots; these are submission counts, not exact visible triangle or performance measurements.
+
 ## Run it
 
 Requirements:
@@ -54,7 +71,7 @@ npm test
 - Left drag: orbit
 - Mouse wheel: zoom
 - Right drag: pan
-- **Output**: shaded, meshlet IDs, selected LOD, or world normals
+- **Nanite view**: toggle meshlet IDs, selected LOD, or world normals; off returns to shading
 - **LOD error**: acceptable projected geometric error in pixels
 - **Experimental HZB occlusion**: opt into research-grade GPU occlusion rejection
 - **Meshlet normal-cone culling**: reject clusters whose triangles all face away

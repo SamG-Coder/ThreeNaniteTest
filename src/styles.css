@@ -412,3 +412,73 @@ input[type="range"] {
     white-space: nowrap;
   }
 }
+
+/* Keep comparison controls available without covering the mobile viewport. */
+[hidden] { display: none !important; }
+#viewport { touch-action: none; }
+.quick-controls {
+  position: fixed;
+  top: 104px;
+  left: 18px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  max-width: calc(100vw - 394px);
+  padding: 8px 12px;
+  border-radius: 12px;
+}
+.quick-controls .toggle { margin: 0; min-height: 44px; }
+#mode-description { flex-basis: 100%; font-size: .875rem; color: #b2c5df; }
+button, select, .file-button { min-height: 44px; font-size: .875rem; }
+.toggle { min-height: 44px; font-size: .875rem; }
+.toggle input { width: 22px; height: 22px; flex-shrink: 0; }
+input[type="range"] { min-height: 44px; }
+.field { font-size: .875rem; }
+.muted { font-size: .875rem; }
+.asset-name { overflow-wrap: anywhere; }
+:focus-visible { outline: 2px solid #8fc2ff; outline-offset: 3px; }
+:disabled { opacity: .45; cursor: not-allowed; }
+.panel { overscroll-behavior: contain; }
+.touch-help { display: none; }
+@media (pointer: coarse) {
+  .desktop-help { display: none; }
+  .touch-help { display: inline; }
+}
+@media (max-width: 760px), (max-height: 520px) {
+  .topbar {
+    inset: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) auto max(8px, env(safe-area-inset-left));
+    min-height: 60px; padding: 10px 12px; gap: 8px;
+  }
+  .eyebrow { font-size: .625rem; letter-spacing: .08em; }
+  .status-pill { max-width: 40%; font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .quick-controls {
+    top: calc(max(8px, env(safe-area-inset-top)) + 70px);
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    max-width: none; gap: 4px 12px; padding: 6px 10px;
+  }
+  .quick-controls button { margin-left: auto; }
+  #mode-description { font-size: .75rem; padding-bottom: 3px; }
+  .panel {
+    top: auto; right: max(8px, env(safe-area-inset-right));
+    left: max(8px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
+    width: auto; max-height: min(48dvh, calc(100dvh - 180px));
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  .help {
+    display: block; left: max(8px, env(safe-area-inset-left));
+    bottom: max(8px, env(safe-area-inset-bottom)); max-width: calc(100vw - 16px);
+    font-size: .75rem;
+  }
+  body:has(.panel:not([hidden])) .help { display: none; }
+  select { font-size: 16px; }
+  .loading { text-align: center; }
+}
+@media (max-height: 520px) and (min-width: 600px) {
+  .panel { left: auto; width: 320px; max-height: calc(100dvh - 170px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}

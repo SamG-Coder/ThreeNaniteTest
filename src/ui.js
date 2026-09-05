@@ -20,6 +20,11 @@ export class DemoUI {
     this.elements = {
       statusPill: document.querySelector('#status-pill'),
       outputMode: document.querySelector('#output-mode'),
+      naniteEnabled: document.querySelector('#nanite-enabled'),
+      naniteView: document.querySelector('#nanite-view'),
+      panelToggle: document.querySelector('#panel-toggle'),
+      panel: document.querySelector('#controls-panel'),
+      modeDescription: document.querySelector('#mode-description'),
       lodThreshold: document.querySelector('#lod-threshold'),
       lodValue: document.querySelector('#lod-value'),
       occlusionEnabled: document.querySelector('#occlusion-enabled'),
@@ -51,11 +56,29 @@ export class DemoUI {
     this.onResetCamera = null;
 
     this.bindEvents();
+    this.setPanelOpen(!window.matchMedia('(max-width: 760px), (max-height: 520px)').matches);
+    this.syncRendererControls();
   }
 
   bindEvents() {
-    this.elements.outputMode.addEventListener('change', () => {
-      this.pipeline?.setOutputMode(this.elements.outputMode.value);
+    this.elements.outputMode.addEventListener('change', () => this.syncRendererControls());
+    this.elements.naniteEnabled.addEventListener('change', () => {
+      this.pipeline?.setNaniteEnabled(this.elements.naniteEnabled.checked);
+      this.elements.visibleMeshlets.textContent = '—';
+      this.elements.submittedTriangles.textContent = '—';
+      this.elements.capacity.textContent = '—';
+      this.elements.overflowWarning.classList.add('hidden');
+      this.syncRendererControls();
+    });
+    this.elements.naniteView.addEventListener('change', () => this.syncRendererControls());
+    this.elements.panelToggle.addEventListener('click', () => {
+      this.setPanelOpen(this.elements.panel.hidden);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !this.elements.panel.hidden) {
+        this.setPanelOpen(false);
+        this.elements.panelToggle.focus();
+      }
     });
 
     this.elements.lodThreshold.addEventListener('input', () => {
@@ -97,11 +120,34 @@ export class DemoUI {
 
   bindPipeline(pipeline) {
     this.pipeline = pipeline;
-    pipeline.setOutputMode(this.elements.outputMode.value);
+    pipeline.setNaniteEnabled(this.elements.naniteEnabled.checked);
+    this.syncRendererControls();
     pipeline.setLodThreshold(Number(this.elements.lodThreshold.value));
     pipeline.setOcclusionEnabled(this.elements.occlusionEnabled.checked);
     pipeline.setConeEnabled(this.elements.coneEnabled.checked);
     pipeline.setOccludersVisible(this.elements.occludersVisible.checked);
+  }
+
+  setPanelOpen(open) {
+    this.elements.panel.hidden = !open;
+    this.elements.panelToggle.setAttribute('aria-expanded', String(open));
+    this.elements.panelToggle.textContent = open ? 'Hide controls' : 'Controls';
+  }
+
+  syncRendererControls() {
+    const enabled = this.elements.naniteEnabled.checked;
+    const visualizing = enabled && this.elements.naniteView.checked;
+    this.elements.naniteView.disabled = !enabled;
+    this.elements.outputMode.disabled = !visualizing;
+    for (const key of ['lodThreshold', 'occlusionEnabled', 'coneEnabled']) {
+      this.elements[key].disabled = !enabled;
+    }
+    const mode = visualizing ? this.elements.outputMode.value : 'shaded';
+    this.pipeline?.setOutputMode(mode);
+    const label = visualizing ? this.elements.outputMode.selectedOptions[0].text : 'shaded';
+    this.elements.modeDescription.textContent = enabled
+      ? `Nanite on · ${label}` : 'Nanite off · full resolution';
+    this.elements.lodBars.hidden = !enabled;
   }
 
   setStatus(text, busy = false) {
@@ -135,7 +181,7 @@ export class DemoUI {
 
   showFatalError(error) {
     const message = error instanceof Error
-      ? `${error.message}\n\n${error.stack ?? ''}`
+      ? error.message
       : String(error);
 
     this.elements.fatalErrorText.textContent = message;
@@ -179,7 +225,8 @@ export class DemoUI {
     const percent = stats.capacity > 0
       ? (stats.visibleMeshlets / stats.capacity) * 100
       : 0;
-    this.elements.capacity.textContent = `${percent.toFixed(1)}%`;
+    this.elements.capacity.textContent = stats.naniteEnabled === false ? '—' : `${percent.toFixed(1)}%`;
+    if (stats.naniteEnabled === false) this.elements.visibleMeshlets.textContent = '—';
     this.elements.capacity.title = `${numberFormatter.format(stats.visibleMeshlets)} / ${numberFormatter.format(stats.capacity)} meshlets`; 
 
     this.elements.overflowWarning.classList.toggle(
