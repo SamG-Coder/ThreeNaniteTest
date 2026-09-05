@@ -158,7 +158,7 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
       onProgress(title, detail) { ui.updateLoading(`Forest · ${title}`, detail); }
     });
     if (generation !== rebuildGeneration) { geometry.dispose(); world.treeGeometry.dispose(); return; }
-    nextPipeline = new ForestRenderer(renderer, camera, asset, treeAsset, world, stats => ui.updateStats(stats), {bitmask:selectedRaster.startsWith('bitmask'),bitmaskVariant:selectedRaster==='bitmask-bounded'?'bounded':(rasterVariant(location.search)==='bounded'?'original':rasterVariant(location.search)),fullGeometry:selectedMode==='full'&&selectedRaster.startsWith('bitmask')});
+    nextPipeline = new ForestRenderer(renderer, camera, asset, treeAsset, world, stats => ui.updateStats(stats), {bitmask:selectedRaster.startsWith('bitmask'),bitmaskVariant:selectedRaster==='bitmask-fast'?'fast':selectedRaster==='bitmask-bounded'?'bounded':(['bounded','fast'].includes(rasterVariant(location.search))?'original':rasterVariant(location.search)),fullGeometry:selectedMode==='full'&&selectedRaster.startsWith('bitmask')});
     try { await nextPipeline.initBitmask(); } catch(error) { nextPipeline.dispose(); throw error; }
     sourceRecord.assets.set(mode, { asset, treeAsset });
   } else {
@@ -331,7 +331,7 @@ async function initialise() {
   };
 
   // Comparison links start in the same forest, camera and raster mode.
-  if(['bitmaskReference','bitmaskVariant'].some(key=>new URLSearchParams(location.search).has(key)))ui.elements.rasterizerMode.value=new URLSearchParams(location.search).get('bitmaskVariant')==='bounded'?'bitmask-bounded':'bitmask';
+  if(['bitmaskReference','bitmaskVariant'].some(key=>new URLSearchParams(location.search).has(key)))ui.elements.rasterizerMode.value=['bounded','fast'].includes(rasterVariant(location.search))?'bitmask-'+rasterVariant(location.search):'bitmask';
   const geometryMode=new URLSearchParams(location.search).get('geometry');
   if(['full','auto','hierarchy'].includes(geometryMode))ui.elements.renderMode.value=geometryMode;
   await ui.onForest();

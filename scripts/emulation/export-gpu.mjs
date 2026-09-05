@@ -1,3 +1,4 @@
+import {forestFastWGSL} from '../../src/bitmask/forestFastShaders.js';
 import {forestBoundedWGSL,forestDispatchWGSL} from '../../src/bitmask/forestBoundedShaders.js';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {prepareForest} from './forest.mjs';
@@ -21,7 +22,7 @@ for(let a=0;a<2;a++){
 const params=new ArrayBuffer(128),f=new Float32Array(params),u=new Uint32Array(params);f.set(vp.elements);f.set([...camera.position.toArray(),1],16);u.set([s.width,s.height,Math.ceil(s.width/8),Math.ceil(s.width/8)*Math.ceil(s.height/8)],20);
 const capacity=s.geometry==='full'?assets.map((a,i)=>a.lods[0].clusterCount*(i?world.treeInstances.length/4:1)):[8192,32768];
 u.set([...capacity,...assets.map(a=>a.indices.length)],24);u.set([8388608,0,0,Math.min(65535,capacity[0]+capacity[1])],28);save('params',new Uint8Array(params));
-for(const [variant,code] of Object.entries({bounded:forestBoundedWGSL,original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL,reject:forestRejectWGSL}))writeFileSync(`${out}/${variant}.wgsl`,code);
+for(const [variant,code] of Object.entries({fast:forestFastWGSL,bounded:forestBoundedWGSL,original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL,reject:forestRejectWGSL}))writeFileSync(`${out}/${variant}.wgsl`,code);
 writeFileSync(`${out}/manifest.json`,JSON.stringify({width:s.width,height:s.height,counts:s.counts,sourceTriangles:s.sourceTriangles,capacity,geometry:s.geometry,density:s.density,cpuTimingsMs:s.cpuTimingsMs,camera:s.camera,selection:'CPU equivalent of cull, deterministic slot order'},null,2));
 console.log('Exported actual forest GPU buffers',out,s.counts);
 

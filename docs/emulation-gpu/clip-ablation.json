@@ -1,0 +1,292 @@
+{
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 384,
+    "height": 704,
+    "counts": {
+      "groupsVisited": 8320,
+      "groupsRejected": 7383,
+      "meshletsTested": 50249,
+      "frustumRejected": 7659,
+      "coneRejected": 692,
+      "actualTriangles": 2649588,
+      "paddedTriangleSlots": 2681472,
+      "asset0": 1097,
+      "asset1": 40801,
+      "binDispatchInvocations": 29359680,
+      "idleBinInvocations": 26678208
+    },
+    "sourceTriangles": 28172160,
+    "capacity": [
+      6713,
+      439808
+    ],
+    "geometry": "full",
+    "density": "high",
+    "cpuTimingsMs": {
+      "sceneBuild": 2395.3830040000003,
+      "assetBuild": 5184.418319,
+      "selection": 44.6148919999996,
+      "projection": null
+    },
+    "camera": {
+      "position": [
+        0,
+        4.1146040622323286,
+        62
+      ],
+      "pitch": -0.05,
+      "yaw": 0,
+      "fov": 50
+    },
+    "selection": "CPU equivalent of cull, deterministic slot order"
+  },
+  "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+  "stats": 0,
+  "dispatch": "indirect",
+  "emptyBoundsExperiment": false,
+  "stageNames": [
+    "clear",
+    "bin",
+    "raster",
+    "dispatchArgs"
+  ],
+  "warmup": 1,
+  "samples": 3,
+  "limitations": [
+    "Software Vulkan timings are not phone GPU timings",
+    "Selection is a separately timed CPU equivalent, not the Three GPU selection shader",
+    "Scene/asset construction is startup work; excluded from raster timings",
+    "No sky/water, Three presentation or hardware raster baseline",
+    "Depth/ID comparisons do not establish shading parity with hardware"
+  ],
+  "runs": [
+    {
+      "variant": "bounded",
+      "dispatch": "indirect",
+      "summaryMs": {
+        "clear": {
+          "median": 0.176632,
+          "min": 0.164635,
+          "max": 0.213948,
+          "p95": 0.213948
+        },
+        "bin": {
+          "median": 501.006231,
+          "min": 428.729748,
+          "max": 585.982261,
+          "p95": 585.982261
+        },
+        "raster": {
+          "median": 792.919272,
+          "min": 658.707993,
+          "max": 863.700078,
+          "p95": 863.700078
+        },
+        "dispatchArgs": {
+          "median": 0.022493,
+          "min": 0.022212,
+          "max": 0.026071,
+          "p95": 0.026071
+        },
+        "totalGpu": {
+          "median": 1292.620532,
+          "min": 1159.950384,
+          "max": 1379.100658,
+          "p95": 1379.100658
+        },
+        "submitToReadback": {
+          "median": 1293.164416005311,
+          "min": 1160.48997699545,
+          "max": 1379.783178002981,
+          "p95": 1379.783178002981
+        }
+      },
+      "colorMismatches": 0,
+      "colorSHA256": "bcd7dbd9aeeb38b06e5f6909d1254ee39901f8660d9b375e5859550b83decad3",
+      "sourceSHA256": "e0fcef3aa8155095d1e1a37b5075755a7f8cd557718c6a7fe7b407082aa50a96",
+      "timings": [
+        {
+          "warmup": true,
+          "wallSeconds": 1.749166260997299,
+          "stagesMs": [
+            1.806716,
+            536.096894,
+            697.45294,
+            0.046238
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.379783178002981,
+          "stagesMs": [
+            0.176632,
+            585.982261,
+            792.919272,
+            0.022493
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.293164416005311,
+          "stagesMs": [
+            0.164635,
+            428.729748,
+            863.700078,
+            0.026071
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.16048997699545,
+          "stagesMs": [
+            0.213948,
+            501.006231,
+            658.707993,
+            0.022212
+          ]
+        }
+      ],
+      "depthMaxDifference": 0.0,
+      "idMismatches": 0,
+      "counters": [
+        1097,
+        40801,
+        734903,
+        0,
+        253189,
+        25496,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": "05204868c6fcad710ea0ae6af02e55fbaa776f3f659e8b4c76b640c7b24eb9f9"
+    },
+    {
+      "variant": "clipfast",
+      "dispatch": "indirect",
+      "summaryMs": {
+        "clear": {
+          "median": 0.255626,
+          "min": 0.210106,
+          "max": 0.25836,
+          "p95": 0.25836
+        },
+        "bin": {
+          "median": 452.508164,
+          "min": 428.283485,
+          "max": 547.047135,
+          "p95": 547.047135
+        },
+        "raster": {
+          "median": 778.905368,
+          "min": 567.809357,
+          "max": 932.423823,
+          "p95": 932.423823
+        },
+        "dispatchArgs": {
+          "median": 0.016526,
+          "min": 0.016134,
+          "max": 0.021751,
+          "p95": 0.021751
+        },
+        "totalGpu": {
+          "median": 1231.690909,
+          "min": 996.3677279999999,
+          "max": 1479.697198,
+          "p95": 1479.697198
+        },
+        "submitToReadback": {
+          "median": 1232.3320299983607,
+          "min": 996.9205209999927,
+          "max": 1480.2008959959494,
+          "p95": 1480.2008959959494
+        }
+      },
+      "colorMismatches": 0,
+      "colorSHA256": "bcd7dbd9aeeb38b06e5f6909d1254ee39901f8660d9b375e5859550b83decad3",
+      "sourceSHA256": "1d201f810da0afed3a80444619c05533ae199c00b736553ef2be4f6f72a7389a",
+      "timings": [
+        {
+          "warmup": true,
+          "wallSeconds": 1.8693967879953561,
+          "stagesMs": [
+            1.789671,
+            497.118735,
+            1044.518895,
+            0.032387
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 0.9969205209999927,
+          "stagesMs": [
+            0.25836,
+            428.283485,
+            567.809357,
+            0.016526
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.4802008959959494,
+          "stagesMs": [
+            0.210106,
+            547.047135,
+            932.423823,
+            0.016134
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.2323320299983607,
+          "stagesMs": [
+            0.255626,
+            452.508164,
+            778.905368,
+            0.021751
+          ]
+        }
+      ],
+      "depthMaxDifference": 0.0,
+      "idMismatches": 0,
+      "counters": [
+        1097,
+        40801,
+        734903,
+        0,
+        253189,
+        25496,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": "05204868c6fcad710ea0ae6af02e55fbaa776f3f659e8b4c76b640c7b24eb9f9"
+    }
+  ]
+}

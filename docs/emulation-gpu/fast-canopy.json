@@ -1,0 +1,354 @@
+{
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 384,
+    "height": 704,
+    "counts": {
+      "groupsVisited": 8320,
+      "groupsRejected": 7753,
+      "meshletsTested": 30403,
+      "frustumRejected": 13869,
+      "coneRejected": 129,
+      "actualTriangles": 1038873,
+      "paddedTriangleSlots": 1049920,
+      "asset0": 27,
+      "asset1": 16378,
+      "binDispatchInvocations": 29359680,
+      "idleBinInvocations": 28309760
+    },
+    "sourceTriangles": 28172160,
+    "capacity": [
+      6713,
+      439808
+    ],
+    "geometry": "full",
+    "density": "high",
+    "cpuTimingsMs": {
+      "sceneBuild": 2438.2246410000002,
+      "assetBuild": 5402.435605000001,
+      "selection": 16.64597700000013,
+      "projection": null
+    },
+    "camera": {
+      "position": [
+        0,
+        4.1146040622323286,
+        62
+      ],
+      "pitch": 0.55,
+      "yaw": 0,
+      "fov": 50
+    },
+    "selection": "CPU equivalent of cull, deterministic slot order"
+  },
+  "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+  "stats": 0,
+  "mode": 0,
+  "capacity": 8388608,
+  "dispatch": "production",
+  "emptyBoundsExperiment": false,
+  "stageNames": [
+    "clear",
+    "bin",
+    "raster",
+    "dispatchArgs"
+  ],
+  "warmup": 2,
+  "samples": 5,
+  "limitations": [
+    "Software Vulkan timings are not phone GPU timings",
+    "Selection is a separately timed CPU equivalent, not the Three GPU selection shader",
+    "Scene/asset construction is startup work; excluded from raster timings",
+    "No sky/water, Three presentation or hardware raster baseline",
+    "Depth/ID comparisons do not establish shading parity with hardware"
+  ],
+  "runs": [
+    {
+      "variant": "bounded",
+      "dispatch": "indirect",
+      "summaryMs": {
+        "clear": {
+          "median": 0.188214,
+          "min": 0.17822,
+          "max": 0.273224,
+          "p95": 0.273224
+        },
+        "bin": {
+          "median": 251.998205,
+          "min": 213.059264,
+          "max": 265.314019,
+          "p95": 265.314019
+        },
+        "raster": {
+          "median": 717.653554,
+          "min": 520.882675,
+          "max": 813.927591,
+          "p95": 813.927591
+        },
+        "dispatchArgs": {
+          "median": 0.022881,
+          "min": 0.008988,
+          "max": 0.040215,
+          "p95": 0.040215
+        },
+        "totalGpu": {
+          "median": 969.876237,
+          "min": 784.2269,
+          "max": 1027.182034,
+          "p95": 1027.182034
+        },
+        "submitToReadback": {
+          "median": 970.4446240066318,
+          "min": 784.7305030009011,
+          "max": 1027.775152004324,
+          "p95": 1027.775152004324
+        }
+      },
+      "colorMismatches": 0,
+      "colorSHA256": "3c02927ec3d258c099f23e40ae3e25f2117b7d45bf2a0ec041ae2427b3672613",
+      "sourceSHA256": "e0fcef3aa8155095d1e1a37b5075755a7f8cd557718c6a7fe7b407082aa50a96",
+      "timings": [
+        {
+          "warmup": true,
+          "wallSeconds": 1.6110303700043005,
+          "stagesMs": [
+            6.122054,
+            288.3693,
+            760.919214,
+            0.048281
+          ]
+        },
+        {
+          "warmup": true,
+          "wallSeconds": 0.8681533110066084,
+          "stagesMs": [
+            0.312861,
+            245.783536,
+            621.249946,
+            0.016079
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 0.9704446240066318,
+          "stagesMs": [
+            0.201597,
+            251.998205,
+            717.653554,
+            0.022881
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.009859174999292,
+          "stagesMs": [
+            0.17822,
+            217.857165,
+            788.776874,
+            0.040215
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 0.9542626300026313,
+          "stagesMs": [
+            0.273224,
+            265.314019,
+            687.472144,
+            0.028313
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 1.027775152004324,
+          "stagesMs": [
+            0.186191,
+            213.059264,
+            813.927591,
+            0.008988
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 0.7847305030009011,
+          "stagesMs": [
+            0.188214,
+            263.135913,
+            520.882675,
+            0.020098
+          ]
+        }
+      ],
+      "depthMaxDifference": 0.0,
+      "idMismatches": 0,
+      "counters": [
+        27,
+        16378,
+        460635,
+        0,
+        228252,
+        16424,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": "5025643166f02ca11b60009c756d6989c34d7ec035fc265ad992e2282694c3e7"
+    },
+    {
+      "variant": "fast",
+      "dispatch": "indirect",
+      "summaryMs": {
+        "clear": {
+          "median": 0.186504,
+          "min": 0.182721,
+          "max": 0.244162,
+          "p95": 0.244162
+        },
+        "bin": {
+          "median": 184.951543,
+          "min": 164.297262,
+          "max": 238.115671,
+          "p95": 238.115671
+        },
+        "raster": {
+          "median": 708.918652,
+          "min": 541.328146,
+          "max": 779.812533,
+          "p95": 779.812533
+        },
+        "dispatchArgs": {
+          "median": 0.025328,
+          "min": 0.020835,
+          "max": 0.033301,
+          "p95": 0.033301
+        },
+        "totalGpu": {
+          "median": 947.2820889999999,
+          "min": 705.8347919999999,
+          "max": 964.971415,
+          "p95": 964.971415
+        },
+        "submitToReadback": {
+          "median": 947.7851339979679,
+          "min": 706.3650690033683,
+          "max": 965.6517250041361,
+          "p95": 965.6517250041361
+        }
+      },
+      "colorMismatches": 0,
+      "colorSHA256": "3c02927ec3d258c099f23e40ae3e25f2117b7d45bf2a0ec041ae2427b3672613",
+      "sourceSHA256": "4e4ebdf6e4e33bd19b931857440cefa16dae5f433a2e463a655d5c2e3e8a4482",
+      "timings": [
+        {
+          "warmup": true,
+          "wallSeconds": 1.069500525998592,
+          "stagesMs": [
+            1.932317,
+            142.062415,
+            597.090717,
+            0.028824
+          ]
+        },
+        {
+          "warmup": true,
+          "wallSeconds": 1.029865222000808,
+          "stagesMs": [
+            0.286059,
+            228.664232,
+            800.306127,
+            0.029368
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 0.9594064110060572,
+          "stagesMs": [
+            0.244162,
+            233.242167,
+            725.185239,
+            0.033301
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 0.9656517250041361,
+          "stagesMs": [
+            0.186504,
+            184.951543,
+            779.812533,
+            0.020835
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 0.7063650690033683,
+          "stagesMs": [
+            0.184056,
+            164.297262,
+            541.328146,
+            0.025328
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 0.7829363470009412,
+          "stagesMs": [
+            0.182721,
+            178.657885,
+            603.342341,
+            0.030098
+          ]
+        },
+        {
+          "warmup": false,
+          "wallSeconds": 0.9477851339979679,
+          "stagesMs": [
+            0.224355,
+            238.115671,
+            708.918652,
+            0.023411
+          ]
+        }
+      ],
+      "depthMaxDifference": 0.0,
+      "idMismatches": 0,
+      "counters": [
+        27,
+        16378,
+        460635,
+        0,
+        228252,
+        16424,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": "5025643166f02ca11b60009c756d6989c34d7ec035fc265ad992e2282694c3e7"
+    }
+  ]
+}

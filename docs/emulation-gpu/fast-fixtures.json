@@ -1,0 +1,1012 @@
+[
+  {
+    "adapter": {
+      "vendor": "SwiftShader driver",
+      "architecture": "",
+      "device": "SwiftShader Device (Subzero)",
+      "description": "",
+      "stackgroup_min_size": 4,
+      "stackgroup_max_size": 128,
+      "vendor_id": 6880,
+      "device_id": 49374,
+      "adapter_type": "CPU",
+      "backend_type": "Vulkan"
+    },
+    "manifest": {
+      "width": 13,
+      "height": 11,
+      "capacity": [
+        1,
+        1
+      ],
+      "fixture": "near clipping, depth ties, degenerate padding, back faces, partial tiles, multi-batch"
+    },
+    "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+    "stats": 0,
+    "mode": 0,
+    "capacity": 8388608,
+    "dispatch": "production",
+    "emptyBoundsExperiment": false,
+    "stageNames": [
+      "clear",
+      "bin",
+      "raster",
+      "dispatchArgs"
+    ],
+    "warmup": 0,
+    "samples": 1,
+    "limitations": [
+      "Software Vulkan timings are not phone GPU timings",
+      "Selection is a separately timed CPU equivalent, not the Three GPU selection shader",
+      "Scene/asset construction is startup work; excluded from raster timings",
+      "No sky/water, Three presentation or hardware raster baseline",
+      "Depth/ID comparisons do not establish shading parity with hardware"
+    ],
+    "runs": [
+      {
+        "variant": "bounded",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 1.262375,
+            "min": 1.262375,
+            "max": 1.262375,
+            "p95": 1.262375
+          },
+          "bin": {
+            "median": 0.544066,
+            "min": 0.544066,
+            "max": 0.544066,
+            "p95": 0.544066
+          },
+          "raster": {
+            "median": 5.184464,
+            "min": 5.184464,
+            "max": 5.184464,
+            "p95": 5.184464
+          },
+          "dispatchArgs": {
+            "median": 0.047074,
+            "min": 0.047074,
+            "max": 0.047074,
+            "p95": 0.047074
+          },
+          "totalGpu": {
+            "median": 7.037979,
+            "min": 7.037979,
+            "max": 7.037979,
+            "p95": 7.037979
+          },
+          "submitToReadback": {
+            "median": 371.128327002225,
+            "min": 371.128327002225,
+            "max": 371.128327002225,
+            "p95": 371.128327002225
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "75a17afa8e9656002c6b22b5121fed83278b1958526c3154ce098568ac9aca5f",
+        "sourceSHA256": "e0fcef3aa8155095d1e1a37b5075755a7f8cd557718c6a7fe7b407082aa50a96",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.371128327002225,
+            "stagesMs": [
+              1.262375,
+              0.544066,
+              5.184464,
+              0.047074
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          260,
+          0,
+          69,
+          10,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      },
+      {
+        "variant": "fast",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 1.525734,
+            "min": 1.525734,
+            "max": 1.525734,
+            "p95": 1.525734
+          },
+          "bin": {
+            "median": 0.454811,
+            "min": 0.454811,
+            "max": 0.454811,
+            "p95": 0.454811
+          },
+          "raster": {
+            "median": 1.453746,
+            "min": 1.453746,
+            "max": 1.453746,
+            "p95": 1.453746
+          },
+          "dispatchArgs": {
+            "median": 0.032314,
+            "min": 0.032314,
+            "max": 0.032314,
+            "p95": 0.032314
+          },
+          "totalGpu": {
+            "median": 3.466605,
+            "min": 3.466605,
+            "max": 3.466605,
+            "p95": 3.466605
+          },
+          "submitToReadback": {
+            "median": 271.62134899845114,
+            "min": 271.62134899845114,
+            "max": 271.62134899845114,
+            "p95": 271.62134899845114
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "75a17afa8e9656002c6b22b5121fed83278b1958526c3154ce098568ac9aca5f",
+        "sourceSHA256": "4e4ebdf6e4e33bd19b931857440cefa16dae5f433a2e463a655d5c2e3e8a4482",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.27162134899845114,
+            "stagesMs": [
+              1.525734,
+              0.454811,
+              1.453746,
+              0.032314
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          260,
+          0,
+          69,
+          10,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      }
+    ]
+  },
+  {
+    "adapter": {
+      "vendor": "SwiftShader driver",
+      "architecture": "",
+      "device": "SwiftShader Device (Subzero)",
+      "description": "",
+      "stackgroup_min_size": 4,
+      "stackgroup_max_size": 128,
+      "vendor_id": 6880,
+      "device_id": 49374,
+      "adapter_type": "CPU",
+      "backend_type": "Vulkan"
+    },
+    "manifest": {
+      "width": 13,
+      "height": 11,
+      "capacity": [
+        1,
+        1
+      ],
+      "fixture": "near clipping, depth ties, degenerate padding, back faces, partial tiles, multi-batch"
+    },
+    "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+    "stats": 0,
+    "mode": 0,
+    "capacity": 1,
+    "dispatch": "production",
+    "emptyBoundsExperiment": false,
+    "stageNames": [
+      "clear",
+      "bin",
+      "raster",
+      "dispatchArgs"
+    ],
+    "warmup": 0,
+    "samples": 1,
+    "limitations": [
+      "Software Vulkan timings are not phone GPU timings",
+      "Selection is a separately timed CPU equivalent, not the Three GPU selection shader",
+      "Scene/asset construction is startup work; excluded from raster timings",
+      "No sky/water, Three presentation or hardware raster baseline",
+      "Depth/ID comparisons do not establish shading parity with hardware"
+    ],
+    "runs": [
+      {
+        "variant": "bounded",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 0.495857,
+            "min": 0.495857,
+            "max": 0.495857,
+            "p95": 0.495857
+          },
+          "bin": {
+            "median": 0.512965,
+            "min": 0.512965,
+            "max": 0.512965,
+            "p95": 0.512965
+          },
+          "raster": {
+            "median": 5.269559,
+            "min": 5.269559,
+            "max": 5.269559,
+            "p95": 5.269559
+          },
+          "dispatchArgs": {
+            "median": 0.131995,
+            "min": 0.131995,
+            "max": 0.131995,
+            "p95": 0.131995
+          },
+          "totalGpu": {
+            "median": 6.410376,
+            "min": 6.410376,
+            "max": 6.410376,
+            "p95": 6.410376
+          },
+          "submitToReadback": {
+            "median": 127.40984000265598,
+            "min": 127.40984000265598,
+            "max": 127.40984000265598,
+            "p95": 127.40984000265598
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "75a17afa8e9656002c6b22b5121fed83278b1958526c3154ce098568ac9aca5f",
+        "sourceSHA256": "e0fcef3aa8155095d1e1a37b5075755a7f8cd557718c6a7fe7b407082aa50a96",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.12740984000265598,
+            "stagesMs": [
+              0.495857,
+              0.512965,
+              5.269559,
+              0.131995
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          3,
+          4,
+          69,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      },
+      {
+        "variant": "fast",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 0.21084,
+            "min": 0.21084,
+            "max": 0.21084,
+            "p95": 0.21084
+          },
+          "bin": {
+            "median": 0.330227,
+            "min": 0.330227,
+            "max": 0.330227,
+            "p95": 0.330227
+          },
+          "raster": {
+            "median": 1.961082,
+            "min": 1.961082,
+            "max": 1.961082,
+            "p95": 1.961082
+          },
+          "dispatchArgs": {
+            "median": 0.018563,
+            "min": 0.018563,
+            "max": 0.018563,
+            "p95": 0.018563
+          },
+          "totalGpu": {
+            "median": 2.520712,
+            "min": 2.520712,
+            "max": 2.520712,
+            "p95": 2.520712
+          },
+          "submitToReadback": {
+            "median": 3.2263879984384403,
+            "min": 3.2263879984384403,
+            "max": 3.2263879984384403,
+            "p95": 3.2263879984384403
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "75a17afa8e9656002c6b22b5121fed83278b1958526c3154ce098568ac9aca5f",
+        "sourceSHA256": "4e4ebdf6e4e33bd19b931857440cefa16dae5f433a2e463a655d5c2e3e8a4482",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.0032263879984384403,
+            "stagesMs": [
+              0.21084,
+              0.330227,
+              1.961082,
+              0.018563
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          3,
+          4,
+          69,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      }
+    ]
+  },
+  {
+    "adapter": {
+      "vendor": "SwiftShader driver",
+      "architecture": "",
+      "device": "SwiftShader Device (Subzero)",
+      "description": "",
+      "stackgroup_min_size": 4,
+      "stackgroup_max_size": 128,
+      "vendor_id": 6880,
+      "device_id": 49374,
+      "adapter_type": "CPU",
+      "backend_type": "Vulkan"
+    },
+    "manifest": {
+      "width": 13,
+      "height": 11,
+      "capacity": [
+        1,
+        1
+      ],
+      "fixture": "near clipping, depth ties, degenerate padding, back faces, partial tiles, multi-batch"
+    },
+    "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+    "stats": 0,
+    "mode": 1,
+    "capacity": 1,
+    "dispatch": "production",
+    "emptyBoundsExperiment": false,
+    "stageNames": [
+      "clear",
+      "bin",
+      "raster",
+      "dispatchArgs"
+    ],
+    "warmup": 0,
+    "samples": 1,
+    "limitations": [
+      "Software Vulkan timings are not phone GPU timings",
+      "Selection is a separately timed CPU equivalent, not the Three GPU selection shader",
+      "Scene/asset construction is startup work; excluded from raster timings",
+      "No sky/water, Three presentation or hardware raster baseline",
+      "Depth/ID comparisons do not establish shading parity with hardware"
+    ],
+    "runs": [
+      {
+        "variant": "bounded",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 0.373855,
+            "min": 0.373855,
+            "max": 0.373855,
+            "p95": 0.373855
+          },
+          "bin": {
+            "median": 0.641221,
+            "min": 0.641221,
+            "max": 0.641221,
+            "p95": 0.641221
+          },
+          "raster": {
+            "median": 9.045987,
+            "min": 9.045987,
+            "max": 9.045987,
+            "p95": 9.045987
+          },
+          "dispatchArgs": {
+            "median": 0.052495,
+            "min": 0.052495,
+            "max": 0.052495,
+            "p95": 0.052495
+          },
+          "totalGpu": {
+            "median": 10.113558,
+            "min": 10.113558,
+            "max": 10.113558,
+            "p95": 10.113558
+          },
+          "submitToReadback": {
+            "median": 132.08028799999738,
+            "min": 132.08028799999738,
+            "max": 132.08028799999738,
+            "p95": 132.08028799999738
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "127be2ba0cab00b5c9e93a5c2fcd81bdf17362e6396c8353910c771e4df4e708",
+        "sourceSHA256": "e0fcef3aa8155095d1e1a37b5075755a7f8cd557718c6a7fe7b407082aa50a96",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.13208028799999738,
+            "stagesMs": [
+              0.373855,
+              0.641221,
+              9.045987,
+              0.052495
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          3,
+          4,
+          69,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      },
+      {
+        "variant": "fast",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 1.063099,
+            "min": 1.063099,
+            "max": 1.063099,
+            "p95": 1.063099
+          },
+          "bin": {
+            "median": 0.519643,
+            "min": 0.519643,
+            "max": 0.519643,
+            "p95": 0.519643
+          },
+          "raster": {
+            "median": 8.774079,
+            "min": 8.774079,
+            "max": 8.774079,
+            "p95": 8.774079
+          },
+          "dispatchArgs": {
+            "median": 0.031399,
+            "min": 0.031399,
+            "max": 0.031399,
+            "p95": 0.031399
+          },
+          "totalGpu": {
+            "median": 10.38822,
+            "min": 10.38822,
+            "max": 10.38822,
+            "p95": 10.38822
+          },
+          "submitToReadback": {
+            "median": 11.13158500083955,
+            "min": 11.13158500083955,
+            "max": 11.13158500083955,
+            "p95": 11.13158500083955
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "127be2ba0cab00b5c9e93a5c2fcd81bdf17362e6396c8353910c771e4df4e708",
+        "sourceSHA256": "4e4ebdf6e4e33bd19b931857440cefa16dae5f433a2e463a655d5c2e3e8a4482",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.01113158500083955,
+            "stagesMs": [
+              1.063099,
+              0.519643,
+              8.774079,
+              0.031399
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          3,
+          4,
+          69,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      }
+    ]
+  },
+  {
+    "adapter": {
+      "vendor": "SwiftShader driver",
+      "architecture": "",
+      "device": "SwiftShader Device (Subzero)",
+      "description": "",
+      "stackgroup_min_size": 4,
+      "stackgroup_max_size": 128,
+      "vendor_id": 6880,
+      "device_id": 49374,
+      "adapter_type": "CPU",
+      "backend_type": "Vulkan"
+    },
+    "manifest": {
+      "width": 13,
+      "height": 11,
+      "capacity": [
+        1,
+        1
+      ],
+      "fixture": "near clipping, depth ties, degenerate padding, back faces, partial tiles, multi-batch"
+    },
+    "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+    "stats": 0,
+    "mode": 2,
+    "capacity": 1,
+    "dispatch": "production",
+    "emptyBoundsExperiment": false,
+    "stageNames": [
+      "clear",
+      "bin",
+      "raster",
+      "dispatchArgs"
+    ],
+    "warmup": 0,
+    "samples": 1,
+    "limitations": [
+      "Software Vulkan timings are not phone GPU timings",
+      "Selection is a separately timed CPU equivalent, not the Three GPU selection shader",
+      "Scene/asset construction is startup work; excluded from raster timings",
+      "No sky/water, Three presentation or hardware raster baseline",
+      "Depth/ID comparisons do not establish shading parity with hardware"
+    ],
+    "runs": [
+      {
+        "variant": "bounded",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 0.558873,
+            "min": 0.558873,
+            "max": 0.558873,
+            "p95": 0.558873
+          },
+          "bin": {
+            "median": 0.753326,
+            "min": 0.753326,
+            "max": 0.753326,
+            "p95": 0.753326
+          },
+          "raster": {
+            "median": 8.714661,
+            "min": 8.714661,
+            "max": 8.714661,
+            "p95": 8.714661
+          },
+          "dispatchArgs": {
+            "median": 0.177014,
+            "min": 0.177014,
+            "max": 0.177014,
+            "p95": 0.177014
+          },
+          "totalGpu": {
+            "median": 10.203873999999999,
+            "min": 10.203873999999999,
+            "max": 10.203873999999999,
+            "p95": 10.203873999999999
+          },
+          "submitToReadback": {
+            "median": 137.91367600060767,
+            "min": 137.91367600060767,
+            "max": 137.91367600060767,
+            "p95": 137.91367600060767
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "5575d9ae5703e30de36b8a4d33adc72ef097834a2112ea751751db1f5215f402",
+        "sourceSHA256": "e0fcef3aa8155095d1e1a37b5075755a7f8cd557718c6a7fe7b407082aa50a96",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.13791367600060767,
+            "stagesMs": [
+              0.558873,
+              0.753326,
+              8.714661,
+              0.177014
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          3,
+          4,
+          69,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      },
+      {
+        "variant": "fast",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 0.164691,
+            "min": 0.164691,
+            "max": 0.164691,
+            "p95": 0.164691
+          },
+          "bin": {
+            "median": 0.313457,
+            "min": 0.313457,
+            "max": 0.313457,
+            "p95": 0.313457
+          },
+          "raster": {
+            "median": 1.841683,
+            "min": 1.841683,
+            "max": 1.841683,
+            "p95": 1.841683
+          },
+          "dispatchArgs": {
+            "median": 0.016113,
+            "min": 0.016113,
+            "max": 0.016113,
+            "p95": 0.016113
+          },
+          "totalGpu": {
+            "median": 2.335944,
+            "min": 2.335944,
+            "max": 2.335944,
+            "p95": 2.335944
+          },
+          "submitToReadback": {
+            "median": 3.186891000950709,
+            "min": 3.186891000950709,
+            "max": 3.186891000950709,
+            "p95": 3.186891000950709
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "5575d9ae5703e30de36b8a4d33adc72ef097834a2112ea751751db1f5215f402",
+        "sourceSHA256": "4e4ebdf6e4e33bd19b931857440cefa16dae5f433a2e463a655d5c2e3e8a4482",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.003186891000950709,
+            "stagesMs": [
+              0.164691,
+              0.313457,
+              1.841683,
+              0.016113
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          3,
+          4,
+          69,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      }
+    ]
+  },
+  {
+    "adapter": {
+      "vendor": "SwiftShader driver",
+      "architecture": "",
+      "device": "SwiftShader Device (Subzero)",
+      "description": "",
+      "stackgroup_min_size": 4,
+      "stackgroup_max_size": 128,
+      "vendor_id": 6880,
+      "device_id": 49374,
+      "adapter_type": "CPU",
+      "backend_type": "Vulkan"
+    },
+    "manifest": {
+      "width": 13,
+      "height": 11,
+      "capacity": [
+        1,
+        1
+      ],
+      "fixture": "near clipping, depth ties, degenerate padding, back faces, partial tiles, multi-batch"
+    },
+    "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+    "stats": 0,
+    "mode": 3,
+    "capacity": 1,
+    "dispatch": "production",
+    "emptyBoundsExperiment": false,
+    "stageNames": [
+      "clear",
+      "bin",
+      "raster",
+      "dispatchArgs"
+    ],
+    "warmup": 0,
+    "samples": 1,
+    "limitations": [
+      "Software Vulkan timings are not phone GPU timings",
+      "Selection is a separately timed CPU equivalent, not the Three GPU selection shader",
+      "Scene/asset construction is startup work; excluded from raster timings",
+      "No sky/water, Three presentation or hardware raster baseline",
+      "Depth/ID comparisons do not establish shading parity with hardware"
+    ],
+    "runs": [
+      {
+        "variant": "bounded",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 0.553438,
+            "min": 0.553438,
+            "max": 0.553438,
+            "p95": 0.553438
+          },
+          "bin": {
+            "median": 0.402719,
+            "min": 0.402719,
+            "max": 0.402719,
+            "p95": 0.402719
+          },
+          "raster": {
+            "median": 9.959504,
+            "min": 9.959504,
+            "max": 9.959504,
+            "p95": 9.959504
+          },
+          "dispatchArgs": {
+            "median": 0.054803,
+            "min": 0.054803,
+            "max": 0.054803,
+            "p95": 0.054803
+          },
+          "totalGpu": {
+            "median": 10.970464000000002,
+            "min": 10.970464000000002,
+            "max": 10.970464000000002,
+            "p95": 10.970464000000002
+          },
+          "submitToReadback": {
+            "median": 141.51645499805454,
+            "min": 141.51645499805454,
+            "max": 141.51645499805454,
+            "p95": 141.51645499805454
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "c0364cafab40b0ea7734886e24f4d032b49eb2a7975167cd33a227e25f633072",
+        "sourceSHA256": "e0fcef3aa8155095d1e1a37b5075755a7f8cd557718c6a7fe7b407082aa50a96",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.14151645499805454,
+            "stagesMs": [
+              0.553438,
+              0.402719,
+              9.959504,
+              0.054803
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          3,
+          4,
+          69,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      },
+      {
+        "variant": "fast",
+        "dispatch": "indirect",
+        "summaryMs": {
+          "clear": {
+            "median": 0.194399,
+            "min": 0.194399,
+            "max": 0.194399,
+            "p95": 0.194399
+          },
+          "bin": {
+            "median": 0.424268,
+            "min": 0.424268,
+            "max": 0.424268,
+            "p95": 0.424268
+          },
+          "raster": {
+            "median": 6.309343,
+            "min": 6.309343,
+            "max": 6.309343,
+            "p95": 6.309343
+          },
+          "dispatchArgs": {
+            "median": 0.050348,
+            "min": 0.050348,
+            "max": 0.050348,
+            "p95": 0.050348
+          },
+          "totalGpu": {
+            "median": 6.978358,
+            "min": 6.978358,
+            "max": 6.978358,
+            "p95": 6.978358
+          },
+          "submitToReadback": {
+            "median": 7.77684900094755,
+            "min": 7.77684900094755,
+            "max": 7.77684900094755,
+            "p95": 7.77684900094755
+          }
+        },
+        "colorMismatches": 0,
+        "colorSHA256": "c0364cafab40b0ea7734886e24f4d032b49eb2a7975167cd33a227e25f633072",
+        "sourceSHA256": "4e4ebdf6e4e33bd19b931857440cefa16dae5f433a2e463a655d5c2e3e8a4482",
+        "timings": [
+          {
+            "warmup": false,
+            "wallSeconds": 0.00777684900094755,
+            "stagesMs": [
+              0.194399,
+              0.424268,
+              6.309343,
+              0.050348
+            ]
+          }
+        ],
+        "depthMaxDifference": 0.0,
+        "idMismatches": 0,
+        "counters": [
+          1,
+          1,
+          3,
+          4,
+          69,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "checksum": "62de98120ea665a3e6aaadf33c6a32d86f2dd57e448cd32be46255f1f53b6776"
+      }
+    ]
+  }
+]

@@ -254,3 +254,7 @@ This variant generates indirect bin dispatch arguments from GPU-visible cluster 
 The production shaders match the original depth/ID checksum on the exported forest in SwiftShader; see [measured result](docs/emulation-gpu/indirect-bounded.json). Software-adapter timings do not predict phone FPS.
 
 [Repeated main-forest stage profile](docs/EMULATED_STAGE_PROFILE.md): production original and bounded shaders at 384×704, with warm-up excluded and per-stage timing distributions. In this software-adapter run, tile rasterization becomes the largest measured stage after the dispatch optimisation. GPU selection and browser presentation are outside the harness.
+
+### Triangle fast paths (experimental)
+
+Select **Bitmask · triangle fast paths** in the main forest, or [open it at full detail](https://samg-coder.github.io/ThreeNaniteTest/?geometry=full&bitmaskVariant=fast). It avoids unnecessary clipping and repeated coverage checks, and shares shading within each triangle batch. Emulated total GPU medians improved about 15% in the spawn view and 2% in the canopy view; phone performance is unverified. [Changes, measurements and correctness checks](docs/RASTER_FAST_PATHS.md).

@@ -1,3 +1,4 @@
+import { forestFastWGSL } from './forestFastShaders.js';
 import * as THREE from 'three/webgpu';
 import { Discard, Fn, If, screenCoordinate, textureLoad, uint } from 'three/tsl';
 import { forestBoundedWGSL, forestDispatchWGSL } from './forestBoundedShaders.js';
@@ -25,7 +26,7 @@ export class ForestBitmaskRenderer {
     this.uniform=this.makeBuffer(128,GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST);
     this.control=this.makeBuffer(64,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);
     this.readback=this.makeBuffer(64,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
-    if(this.variant==='bounded')this.dispatchArgs=this.makeBuffer(12,GPUBufferUsage.STORAGE|GPUBufferUsage.INDIRECT);
+    if(['bounded','fast'].includes(this.variant))this.dispatchArgs=this.makeBuffer(12,GPUBufferUsage.STORAGE|GPUBufferUsage.INDIRECT);
     this.assets=forest.pipelines.map(p=>{
       const vertices=new Float32Array(p.asset.vertexCount*12);
       for(let i=0;i<p.asset.vertexCount;i++){
@@ -89,7 +90,7 @@ export class ForestBitmaskRenderer {
     if(data)this.device.queue.writeBuffer(b,0,data);return b;
   }
   async init(){
-    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:{bounded:forestBoundedWGSL,reject:forestRejectWGSL,original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL}[this.variant]});
+    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:{fast:forestFastWGSL,bounded:forestBoundedWGSL,reject:forestRejectWGSL,original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL}[this.variant]});
     const info=await module.getCompilationInfo();
     const errors=info.messages.filter(m=>m.type==='error');
     if(errors.length)throw new Error(errors.map(e=>`Forest WGSL ${e.lineNum}: ${e.message}`).join('\n'));
