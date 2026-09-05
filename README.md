@@ -291,3 +291,14 @@ Controls also includes an optional **GPU front-to-back cluster ordering** test
 (off by default). This is a bounded GPU sorting experiment inspired by depth
 ordering in Epic's pipeline, not a claimed phone speedup. See the updated
 [coverage and implementation notes](docs/STREAMING_AND_VOXELS.md).
+
+### Willowmere Valley — new playable landscape
+
+[Open Willowmere Valley](https://samg-coder.github.io/ThreeNaniteTest/?scene=landscape),
+or choose **Build Willowmere Valley** under Controls. It combines a walkable lake
+shore, terrain, detailed trees, rock outcrops and dense geometric grass using the
+streaming/atomic visibility technique. Water adds animated waves, Fresnel sky
+reflection, shallow/deep color, sun highlights and shoreline foam.
+
+Touch controls are supported. The old forest remains available for comparison.
+[Scene, shader details and validation](docs/WILLOWMERE_VALLEY.md).

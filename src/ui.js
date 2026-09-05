@@ -25,6 +25,7 @@ export class DemoUI {
       frameMs: document.querySelector('#frame-ms'),
       terrainSample: document.querySelector('#terrain-sample'),
       forestSample: document.querySelector('#forest-sample'),
+      landscapeSample: document.querySelector('#landscape-sample'),
       navigationMode: document.querySelector('#navigation-mode'),
       gameHud: document.querySelector('#game-hud'),
       outputMode: document.querySelector('#output-mode'),
@@ -75,6 +76,7 @@ export class DemoUI {
   }
 
   bindEvents() {
+    this.elements.landscapeSample.addEventListener('click', () => this.onLandscape?.());
     this.elements.forestSample.addEventListener('click', () => this.onForest?.());
     this.elements.terrainSample.addEventListener('click', () => this.onTerrain?.());
     this.elements.navigationMode.addEventListener('click', () => {

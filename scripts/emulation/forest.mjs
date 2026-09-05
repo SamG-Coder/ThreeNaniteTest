@@ -1,3 +1,4 @@
+import {createLandscapeScene} from '../../src/landscapeScene.js';
 import { addVoxelRoot } from '../../src/streaming/voxels.js';
 import * as THREE from 'three/webgpu';
 import {createForestScene} from '../../src/forestScene.js';
@@ -5,17 +6,17 @@ import {buildNaniteLiteAsset} from '../../src/buildNaniteLiteAsset.js';
 import {buildHierarchyAsset} from '../../src/buildHierarchyAsset.js';
 import {clipNearPlane} from '../../src/bitmask/reference.js';
 
-export async function prepareForest({density='high',geometry='full',width=384,height=704,pitch=.55,yaw=0,threshold=4.5,project=true,voxels=false}={}){
+export async function prepareForest({density='high',geometry='full',width=384,height=704,pitch=.55,yaw=0,threshold=4.5,project=true,voxels=false,scene='forest'}={}){
  if(!['full','auto','hierarchy'].includes(geometry))throw new Error('Unknown geometry mode');
  const started=performance.now();
- const world=createForestScene(density);
+ const world=scene==='landscape'?createLandscapeScene(density):createForestScene(density);
  const sceneBuilt=performance.now();
  const build=geometry==='hierarchy'?buildHierarchyAsset:buildNaniteLiteAsset;
  const assets=[await build(world.geometry,{meshletsPerGroup:64}),await build(world.treeGeometry,{meshletsPerGroup:64})];
  if(voxels)assets[1]=await addVoxelRoot(assets[1],world.treeGeometry);
  const assetsBuilt=performance.now();
  const camera=new THREE.PerspectiveCamera(50,width/height,.1,500);camera.coordinateSystem=THREE.WebGPUCoordinateSystem;camera.updateProjectionMatrix();
- camera.position.set(0,world.heightAt(0,62)+1.7,62);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();
+ const [spawnX,,spawnZ]=world.spawn;camera.position.set(spawnX,world.heightAt(spawnX,spawnZ)+1.7,spawnZ);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();
  const vp=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
  const frustum=new THREE.Frustum().setFromProjectionMatrix(vp,THREE.WebGPUCoordinateSystem);
  const selected=[],counts={groupsVisited:0,groupsRejected:0,meshletsTested:0,frustumRejected:0,coneRejected:0,actualTriangles:0,paddedTriangleSlots:0};

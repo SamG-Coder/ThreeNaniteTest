@@ -1,3 +1,4 @@
+import { createLandscapeWater, createLandscapeSky } from './landscapeWater.js';
 import { ForestStreamingRenderer } from './streaming/ForestStreamingRenderer.js';
 import { ForestVisibilityRenderer } from './visibility/ForestVisibilityRenderer.js';
 import * as THREE from 'three/webgpu';
@@ -40,6 +41,9 @@ export class ForestRenderer {
     scene.fog=new THREE.FogExp2(0xb6d9df,.008);
     // Opaque lake shading is identical in both modes; it is not counted as
     // Nanite geometry, and does not manufacture a geometry speedup.
+    if(world.landscape){
+      this.water=createLandscapeWater(world);this.sky=createLandscapeSky();scene.add(this.water,this.sky);
+    }else{
     const waterMaterial=new THREE.MeshStandardNodeMaterial({color:0x1c8585,roughness:.23,metalness:.35});
     waterMaterial.positionNode=vec3(positionLocal.x,
       positionLocal.y.add(sin(positionLocal.x.mul(.8).add(time)).mul(.025))
@@ -48,10 +52,12 @@ export class ForestRenderer {
     this.water.position.set(0,.1,-9); scene.add(this.water);
     // A small physical roughness stops the lake becoming a mirror without IBL.
     waterMaterial.roughnessNode=float(.23);
+    }
     if(options.bitmask)this.bitmask=options.bitmaskVariant==='streaming'?new ForestStreamingRenderer(this):options.bitmaskVariant==='visibility'?new ForestVisibilityRenderer(this):new ForestBitmaskRenderer(this,options.bitmaskVariant);
   }
   async initBitmask() { if(this.bitmask)await this.bitmask.init(); }
   render(now) {
+    if(this.sky)this.sky.position.copy(this.terrain.camera.position);
     if(this.bitmask&&this.enabled){
       if(!this.bitmask.prepare(now))return false;
       for(const p of this.pipelines){p.naniteMesh.visible=false;p.baselineMesh.visible=false;}
@@ -72,6 +78,7 @@ export class ForestRenderer {
   resize() { for(const p of this.pipelines) p.resize(); this.bitmask?.resize(); }
   dispose() {
     this.bitmask?.dispose();
+    this.sky?.geometry.dispose();this.sky?.material.dispose();
     this.samples.clear(); this.water.geometry.dispose(); this.water.material.dispose();
     for(const p of this.pipelines) p.dispose();
   }

@@ -1,3 +1,4 @@
+import { createLandscapeScene } from './landscapeScene.js';
 import { addVoxelRoot } from './streaming/voxels.js';
 import { rasterVariant } from './bitmask/variant.js';
 import * as THREE from 'three/webgpu';
@@ -196,6 +197,7 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
       gameControls = new GameControls(camera, canvas, world, ui.gameElements);
       gameControls.setEnabled(true);
     }
+    document.getElementById('scene-title').textContent=world?.name??(world?.forest?'Emerald Basin':displayName);
     ui.setGameScene(Boolean(world), Boolean(world?.forest));
   } else gameControls?.setEnabled(wasWalking);
   activeSource = sourceRecord;
@@ -307,6 +309,16 @@ async function initialise() {
       await rebuildScene(world.geometry, `Emerald Basin · ${world.treeInstances.length / 4} trees · ${(triangles/1e6).toFixed(1)}M source triangles`, world);
     } catch (error) { ui.showFatalError(error); }
   };
+  ui.onLandscape = async () => {
+    try {
+      ui.showLoading('Preparing Willowmere Valley', 'Growing grass, placing trees and shaping the lakeshore…');
+      await new Promise(resolve=>requestAnimationFrame(resolve));
+      const world=createLandscapeScene(ui.elements.geometryDensity.value);
+      ui.elements.renderMode.value='full';
+      ui.elements.rasterizerMode.value='bitmask-voxel';
+      await rebuildScene(world.geometry,`${world.name} · ${world.treeInstances.length/4} trees · ${world.grassClumps.toLocaleString()} grass clumps`,world);
+    }catch(error){ui.showFatalError(error);}
+  };
   ui.onTerrain = async () => {
     try {
       ui.showLoading('Preparing landscape', 'Generating the selected geometry density…');
@@ -342,7 +354,7 @@ async function initialise() {
   if(['bitmaskReference','bitmaskVariant'].some(key=>new URLSearchParams(location.search).has(key)))ui.elements.rasterizerMode.value=['bounded','fast','visibility','streaming','voxel'].includes(rasterVariant(location.search))?'bitmask-'+rasterVariant(location.search):'bitmask';
   const geometryMode=new URLSearchParams(location.search).get('geometry');
   if(['full','auto','hierarchy'].includes(geometryMode))ui.elements.renderMode.value=geometryMode;
-  await ui.onForest();
+  if(new URLSearchParams(location.search).get('scene')==='landscape')await ui.onLandscape();else await ui.onForest();
 }
 
 initialise().catch((error) => {

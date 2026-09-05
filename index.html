@@ -13,7 +13,7 @@
       <header class="topbar glass">
         <div>
           <div class="eyebrow">THREE.JS · WEBGPU · GPU DRIVEN</div>
-          <h1>Emerald Basin</h1>
+          <h1 id="scene-title">Emerald Basin</h1>
         </div>
         <div id="status-pill" class="status-pill">Initialising WebGPU</div>
       </header>
@@ -70,12 +70,13 @@
           <h2>Scene</h2>
           <label class="field"><span>Geometry density</span>
             <select id="geometry-density">
-              <option value="compact">Forest · 96 detailed trees</option>
-              <option value="high">Dense forest · 256 detailed trees</option>
-              <option value="ultra">Extreme forest · 512 detailed trees</option>
+              <option value="compact">Compact vegetation</option>
+              <option value="high">Dense vegetation</option>
+              <option value="ultra">Extreme vegetation · stress test</option>
             </select>
           </label>
-          <p class="muted">Choose a forest density, then build. Both modes use the same trees. Terrain sample uses density to set its grid resolution.</p>
+          <p class="muted">Choose a density, then build a scene. Willowmere Valley adds a shaded lake, grass and a walkable shore. Emerald Basin keeps the original forest comparison.</p>
+          <button id="landscape-sample" type="button" class="file-button">Build Willowmere Valley · lake, trees &amp; grass</button>
           <button id="forest-sample" type="button" class="file-button">Build forest</button>
           <div class="scene-buttons">
             <button id="terrain-sample" type="button">Terrain sample</button>

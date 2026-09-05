@@ -72,7 +72,7 @@ export class GameControls {
   reset() {
     const [x,,z]=this.world.spawn;
     this.camera.position.set(x,this.world.heightAt(x,z)+1.7,z);
-    this.yaw=0; this.pitch=-.05; this.velocityY=0; this.look(0,0);
+    this.yaw=this.world.spawnYaw??0; this.pitch=this.world.spawnPitch??-.05; this.velocityY=0; this.look(0,0);
   }
   look(dx,dy) {
     this.yaw-=dx*.0025; this.pitch=THREE.MathUtils.clamp(this.pitch-dy*.0025,-1.35,1.35);
@@ -84,7 +84,7 @@ export class GameControls {
     if(p.y<=this.world.heightAt(p.x,p.z)+1.72) this.velocityY=6.2;
   }
   blocked(x,z) {
-    return this.world.obstacles.some(o=>o.radius!==undefined
+    return Boolean(this.world.blockedAt?.(x,z)) || this.world.obstacles.some(o=>o.radius!==undefined
       ? Math.hypot(x-o.x,z-o.z)<o.radius+.35
       : Math.abs(x-o.x)<o.halfX+.35 && Math.abs(z-o.z)<o.halfZ+.35);
   }
