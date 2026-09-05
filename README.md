@@ -204,14 +204,13 @@ It then reads `(instanceId, clusterId)` from the compacted visible list, pulls t
 This prototype is intentionally honest about what it does not implement:
 
 - Patch LOD uses independent patch chains; Hierarchical LOD uses a recursive binary tree. Neither implements a repartitioned cluster DAG.
-- The active mode’s generated geometry is fully resident in GPU memory; inactive mode assets are cached on the CPU.
-- It does not stream geometry pages.
-- It uses hardware rasterization only; there is no specialised compute path for sub-pixel triangles.
+- The streaming options use bounded GPU page caches with resident fallback; older modes keep generated geometry resident. CPU source geometry remains resident. There is no network page server.
+- Hardware visibility and experimental software rasterizers are available; there is no automatic hybrid hardware/software triangle classifier.
 - One material is used per geometry draw. The game scene uses vertex colors; the mesh stress test uses a procedural checker. Imported material assignments remain unsupported.
 - The GLB loader selects one static mesh and ignores additional primitives and material assignments.
 - Skinned meshes, morph targets, transparency, transmission and runtime vertex displacement are unsupported.
 - Instance transforms use uniform scaling, allowing normals and culling bounds to use the same world matrix safely.
-- Occlusion is off by default. The inherited sphere projection is not conservative in all cases and there is no current-frame recovery pass. History is invalidated on camera movement, LOD-threshold changes, viewport changes and occluder visibility changes. Leave it disabled when checking coverage.
+- Legacy geometry occlusion is off by default. Its inherited sphere projection is not conservative in all cases. The newer Visibility + atomic HZB and streaming paths have current-frame recovery. History is invalidated on camera movement, LOD-threshold changes, viewport changes and occluder visibility changes. Leave it disabled when checking coverage.
 - Visible-list capacities are 8,192 terrain and 32,768 tree meshlets in the forest; the mesh test uses 8,192 on mobile or 16,384 on desktop. The UI displays an overflow warning when it is exceeded.
 
 ## Memory note
@@ -226,7 +225,7 @@ A 64-triangle meshlet gives predictable fixed-size expansion for the indirect dr
 
 ## Further hierarchy work
 
-The recursive resident tree is implemented. Next steps are parallel traversal queues, adjacency-aware cluster repartitioning and streamed pages with resident-parent fallback. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+The recursive resident tree is implemented. Next steps are parallel traversal queues, adjacency-aware cluster repartitioning and network-backed pages. CPU-to-GPU streaming with resident-parent fallback is available in the streaming modes. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Credits
 
@@ -263,4 +262,19 @@ Select **Bitmask · triangle fast paths** in the main forest, or [open it at ful
 
 [Open the new full-detail forest path](https://samg-coder.github.io/ThreeNaniteTest/?geometry=full&bitmaskVariant=visibility), or select **Visibility + atomic HZB** in the Rasterizer dropdown. It combines hardware depth/triangle-ID visibility, atomic 8×8 coverage masks, current-frame hierarchical occlusion rejection, indirect cluster draws and final-pixel shading. Hierarchical screen-space LOD remains a separate geometry option; earlier atomic software raster modes remain available.
 
-The emulated forest rejected 7,047 of 42,990 selected clusters on its second frame with exact depth/ID/colour parity against unculled hardware visibility. Phone performance is unverified. This implements the core visibility pathway; compressed geometry streaming and voxel foliage are not implemented. [Architecture, checks and reproduction](docs/ATOMIC_VISIBILITY_PATH.md).
+The emulated forest rejected 7,047 of 42,990 selected clusters on its second frame with exact depth/ID/colour parity against unculled hardware visibility. Phone performance is unverified. This implements the core visibility pathway. Separate streaming and surface-voxel experiments are now available below. [Architecture, checks and reproduction](docs/ATOMIC_VISIBILITY_PATH.md).
+
+### Streaming and distant surface voxels
+
+Select **Visibility + atomic HZB · streaming** for a bounded geometry page cache,
+or **Streaming + distant surface voxels** to additionally approximate distant trees.
+Both retain atomic coverage, HZB recovery and final-pixel shading. The existing
+Visibility + atomic HZB mode remains available.
+
+[Streaming comparison](https://samg-coder.github.io/ThreeNaniteTest/?geometry=full&bitmaskVariant=streaming)
+· [Surface-voxel comparison](https://samg-coder.github.io/ThreeNaniteTest/?geometry=full&bitmaskVariant=voxel)
+
+Pages stream from CPU memory with a 256 KiB/frame geometry payload cap; fallback
+stays visible while detail loads. Surface voxels use exposed cube faces, not Epic's
+specialized brick rasterizer. These additions are emulated and tested, but phone
+speedups are unverified. [Implementation, limitations and results](docs/STREAMING_AND_VOXELS.md).

@@ -4,6 +4,7 @@ import {
   If,
   Loop,
   atomicAdd,
+  atomicMax,
   atomicStore,
   bool,
   cameraViewMatrix,
@@ -80,10 +81,11 @@ export class NaniteLiteRenderer {
     this.camera = camera;
     this.asset = asset;
     this.gameScene = Boolean(options.gameScene);
-    this.sourceColors = options.sourceGeometry?.getAttribute('color');
+    this.sourceColors = asset.sourceColors ?? options.sourceGeometry?.getAttribute('color');
 
     this.fullGeometry = Boolean(options.fullGeometry);
     this.softwareOnly = Boolean(options.softwareOnly);
+    this.streaming = Boolean(options.streaming);
     this.maxVisibleClusters = options.maxVisibleClusters ?? MAX_VISIBLE_CLUSTERS;
     this.gridSize = options.gridSize ?? INSTANCE_GRID_SIZE;
     this.spacing = options.spacing ?? INSTANCE_SPACING;
@@ -364,8 +366,9 @@ export class NaniteLiteRenderer {
     const groupBoundsBuffer = storage(
       createStorageAttribute(asset.groupBounds, 4), 'vec4', asset.groupCount
     ).toReadOnly();
+    this.groupLodAttribute = createStorageAttribute(asset.groupLods.slice(), 4);
     const groupLodBuffer = storage(
-      createStorageAttribute(asset.groupLods, 4), 'vec4', asset.groupCount * asset.lods.length
+      this.groupLodAttribute, 'vec4', asset.groupCount * asset.lods.length
     ).toReadOnly();
 
     const instanceData = this.customInstanceData ?? (this.gameScene
@@ -416,13 +419,13 @@ export class NaniteLiteRenderer {
     const overflowAtomic = storage(this.overflowAttribute, 'uint', 1).toAtomic();
 
     this.lodCounterAttribute = createStorageAttribute(
-      new Uint32Array(asset.lods.length),
+      new Uint32Array(asset.lods.length + (this.streaming ? asset.groupCount : 0)),
       1
     );
     const lodCounterAtomic = storage(
       this.lodCounterAttribute,
       'uint',
-      asset.lods.length
+      asset.lods.length + (this.streaming ? asset.groupCount : 0)
     ).toAtomic();
 
     this.drawIndirectAttribute = new THREE.IndirectStorageBufferAttribute(
@@ -512,11 +515,11 @@ export class NaniteLiteRenderer {
         atomicStore(overflowAtomic.element(0), uint(0));
       });
 
-      If(instanceIndex.lessThan(asset.lods.length), () => {
+      If(instanceIndex.lessThan(asset.lods.length + (this.streaming ? asset.groupCount : 0)), () => {
         atomicStore(lodCounterAtomic.element(instanceIndex), uint(0));
       });
     })()
-      .compute(Math.max(asset.lods.length, 1), [64])
+      .compute(Math.max(asset.lods.length + (this.streaming ? asset.groupCount : 0), 1), [64])
       .setName('Geometry Clear');
 
     const frustumPlanesUniform = this.frustumPlanesUniform;
@@ -602,13 +605,24 @@ export class NaniteLiteRenderer {
             }
           }
 
+          const requestDetail = () => { atomicMax(
+            lodCounterAtomic.element(groupId.add(asset.lods.length)),
+            uint(clamp(pixelFactor.mul(scale).mul(256), 1, 4294967040))); };
+          if (this.streaming && !asset.hierarchy) {
+            If(lodLevel.lessThan(lods.length - 1), requestDetail);
+          }
           const lodData = groupLodBuffer.element(groupId.mul(lods.length).add(asset.hierarchy ? uint(0) : lodLevel));
           const clusterStart = uint(lodData.y);
           const clusterCount = uint(lodData.z).toVar();
           if (asset.hierarchy) {
             const traversal = groupLodBuffer.element(groupId.mul(6).add(1));
             lodLevel.assign(uint(traversal.z));
-            If(traversal.y.greaterThan(0).and(lodData.x.mul(scale).mul(pixelFactor).greaterThan(lodThresholdUniform)), () => {
+            const refine = lodData.x.mul(scale).mul(pixelFactor).greaterThan(lodThresholdUniform);
+            // Full source detail near the camera; only the explicit voxel root
+            // may approximate distant trees in the voxel experiment.
+            const needsRefinement = this.fullGeometry && asset.voxelRoot ? refine.or(groupId.greaterThan(0)) : refine;
+            if (this.streaming) If(needsRefinement, requestDetail);
+            If(traversal.y.greaterThan(0).and(needsRefinement), () => {
               // Refine the whole replacement group. Descendants are never drawn
               // together with an accepted parent; rejected subtrees use escape.
               clusterCount.assign(0);

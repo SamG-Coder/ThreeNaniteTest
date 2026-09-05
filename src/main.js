@@ -1,3 +1,4 @@
+import { addVoxelRoot } from './streaming/voxels.js';
 import { rasterVariant } from './bitmask/variant.js';
 import * as THREE from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -158,9 +159,16 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
       onProgress(title, detail) { ui.updateLoading(`Forest · ${title}`, detail); }
     });
     if (generation !== rebuildGeneration) { geometry.dispose(); world.treeGeometry.dispose(); return; }
-    nextPipeline = new ForestRenderer(renderer, camera, asset, treeAsset, world, stats => ui.updateStats(stats), {bitmask:selectedRaster.startsWith('bitmask'),bitmaskVariant:selectedRaster==='bitmask-visibility'?'visibility':selectedRaster==='bitmask-fast'?'fast':selectedRaster==='bitmask-bounded'?'bounded':(['bounded','fast','visibility'].includes(rasterVariant(location.search))?'original':rasterVariant(location.search)),fullGeometry:selectedMode==='full'&&selectedRaster.startsWith('bitmask')});
+    let voxelTreeAsset=cached?.voxelTreeAsset;
+    if(selectedRaster==='bitmask-voxel'&&!voxelTreeAsset){
+      ui.updateLoading('Voxelizing distant tree surfaces', 'Building occupied cells and a screen-space representation switch…');
+      await new Promise(resolve=>requestAnimationFrame(resolve));
+      voxelTreeAsset=await addVoxelRoot(treeAsset,world.treeGeometry);
+      if(generation!==rebuildGeneration)return;
+    }
+    nextPipeline = new ForestRenderer(renderer, camera, asset, selectedRaster==='bitmask-voxel'?voxelTreeAsset:treeAsset, world, stats => ui.updateStats(stats), {bitmask:selectedRaster.startsWith('bitmask'),bitmaskVariant:['bitmask-streaming','bitmask-voxel'].includes(selectedRaster)?'streaming':selectedRaster==='bitmask-visibility'?'visibility':selectedRaster==='bitmask-fast'?'fast':selectedRaster==='bitmask-bounded'?'bounded':(['bounded','fast','visibility','streaming','voxel'].includes(rasterVariant(location.search))?'original':rasterVariant(location.search)),fullGeometry:selectedMode==='full'&&selectedRaster.startsWith('bitmask')});
     try { await nextPipeline.initBitmask(); } catch(error) { nextPipeline.dispose(); throw error; }
-    sourceRecord.assets.set(mode, { asset, treeAsset });
+    sourceRecord.assets.set(mode, { asset, treeAsset, voxelTreeAsset });
   } else {
     sourceRecord.assets.set(mode, { asset });
     nextPipeline = new NaniteLiteRenderer(renderer, camera, asset, {
@@ -331,7 +339,7 @@ async function initialise() {
   };
 
   // Comparison links start in the same forest, camera and raster mode.
-  if(['bitmaskReference','bitmaskVariant'].some(key=>new URLSearchParams(location.search).has(key)))ui.elements.rasterizerMode.value=['bounded','fast','visibility'].includes(rasterVariant(location.search))?'bitmask-'+rasterVariant(location.search):'bitmask';
+  if(['bitmaskReference','bitmaskVariant'].some(key=>new URLSearchParams(location.search).has(key)))ui.elements.rasterizerMode.value=['bounded','fast','visibility','streaming','voxel'].includes(rasterVariant(location.search))?'bitmask-'+rasterVariant(location.search):'bitmask';
   const geometryMode=new URLSearchParams(location.search).get('geometry');
   if(['full','auto','hierarchy'].includes(geometryMode))ui.elements.renderMode.value=geometryMode;
   await ui.onForest();

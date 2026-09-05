@@ -193,7 +193,7 @@ export class DemoUI {
     this.pipeline?.setOutputMode(mode);
     const label = visualizing ? this.elements.outputMode.selectedOptions[0].text : 'shaded';
     this.elements.lodThreshold.disabled=this.elements.renderMode.value==='full';
-    this.elements.modeDescription.textContent = `${this.elements.renderMode.selectedOptions[0].text} · ${this.elements.rasterizerMode.value==='bitmask-visibility'?'Visibility + atomic HZB':this.elements.rasterizerMode.value.startsWith('bitmask')?'Bitmask compute':'Hardware'} · ${label}`;
+    this.elements.modeDescription.textContent = `${this.elements.renderMode.selectedOptions[0].text} · ${this.elements.rasterizerMode.value==='bitmask-voxel'?'Atomic HZB · streaming + surface voxels':this.elements.rasterizerMode.value==='bitmask-streaming'?'Visibility + atomic HZB · streaming':this.elements.rasterizerMode.value==='bitmask-visibility'?'Visibility + atomic HZB':this.elements.rasterizerMode.value.startsWith('bitmask')?'Bitmask compute':'Hardware'} · ${label}`;
     this.elements.lodBars.hidden = !enabled;
   }
 
@@ -262,7 +262,7 @@ export class DemoUI {
       ? 'Meshlet capacity exceeded · some geometry was dropped'
       : `${submitted} submitted / ${source} source · ${reduction.toFixed(0)}% fewer`;
     if(stats.bitmask&&!stats.bitmask.visibility)this.elements.geometryReadout.textContent+=` · ${stats.bitmask.variant} · ${compactFormatter.format(stats.bitmask.batches)} mask batches · ${stats.bitmask.overflowTiles} scan tiles`;
-    if(stats.bitmask?.visibility){const v=stats.bitmask;this.elements.geometryReadout.textContent+=` · ${compactFormatter.format(v.seed)} seed / ${compactFormatter.format(v.recovery)} recovery clusters · ${compactFormatter.format(v.culled)} HZB rejected · atomic coverage`; }
+    if(stats.bitmask?.visibility){const v=stats.bitmask;this.elements.geometryReadout.textContent+=` · ${compactFormatter.format(v.seed)} seed / ${compactFormatter.format(v.recovery)} recovery clusters · ${compactFormatter.format(v.culled)} HZB rejected · atomic coverage`; if(v.streaming)this.elements.geometryReadout.textContent+=` · ${(v.streaming.bytes/1048576).toFixed(1)} MiB page cache · ${v.streaming.pages} resident pages`; }
     if(stats.bitmask?.work){const w=stats.bitmask.work;this.elements.geometryReadout.textContent+=` · candidate tiles ${compactFormatter.format(w.candidates)} · edge rejected ${compactFormatter.format(w.edgeRejected)} · depth rejected ${compactFormatter.format(w.depthRejected)}/${compactFormatter.format(w.rasterCandidates)} · coverage tests ${compactFormatter.format(w.samples)} · depth tests ${compactFormatter.format(w.resolves)} · winner updates ${compactFormatter.format(w.wins)}`;}
     this.elements.geometryReadout.classList.toggle('capacity-error', Boolean(stats.overflowed));
     this.elements.geometryReadout.title = 'Meshlet submission counts include padded meshlet triangles. Fewer submitted triangles does not guarantee higher FPS.';

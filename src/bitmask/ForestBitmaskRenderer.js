@@ -27,7 +27,11 @@ export class ForestBitmaskRenderer {
     this.control=this.makeBuffer(64,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);
     this.readback=this.makeBuffer(64,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
     if(['bounded','fast'].includes(this.variant))this.dispatchArgs=this.makeBuffer(12,GPUBufferUsage.STORAGE|GPUBufferUsage.INDIRECT);
-    this.assets=forest.pipelines.map(p=>{
+    this.assets=this.createAssets();
+    this.resize();this.createControls();
+  }
+  createAssets(){
+    return this.forest.pipelines.map(p=>{
       const vertices=new Float32Array(p.asset.vertexCount*12);
       for(let i=0;i<p.asset.vertexCount;i++){
         vertices.set(p.asset.vertices.subarray(i*4,i*4+4),i*12);
@@ -39,7 +43,6 @@ export class ForestBitmaskRenderer {
       return {vertices:this.makeBuffer(vertices.byteLength,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST,vertices),
         indices:this.makeBuffer(indices.byteLength,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST,indices)};
     });
-    this.resize();this.createControls();
   }
   get busy(){return this.gate.busy;}
   createControls(){

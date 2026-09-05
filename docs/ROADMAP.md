@@ -1,3 +1,8 @@
+> Update: bounded CPU-to-GPU meshlet paging, complete resident fallback and an
+> experimental distant surface-voxel representation are implemented as separate
+> forest modes. Network streaming, cluster DAG repartitioning and Epic's specialized
+> voxel rasterizer remain future work. See [implementation status](STREAMING_AND_VOXELS.md).
+
 # Current hierarchy milestone
 
 Implemented: separate Patch LOD / Full resolution / Hierarchical LOD controls; recursive boundary-preserving parent construction in meshoptimizer WASM; stackless GPU screen-space traversal; cut/coverage/boundary regression tests; offline WGSL generation.

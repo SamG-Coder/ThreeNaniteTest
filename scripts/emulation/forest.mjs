@@ -1,16 +1,18 @@
+import { addVoxelRoot } from '../../src/streaming/voxels.js';
 import * as THREE from 'three/webgpu';
 import {createForestScene} from '../../src/forestScene.js';
 import {buildNaniteLiteAsset} from '../../src/buildNaniteLiteAsset.js';
 import {buildHierarchyAsset} from '../../src/buildHierarchyAsset.js';
 import {clipNearPlane} from '../../src/bitmask/reference.js';
 
-export async function prepareForest({density='high',geometry='full',width=384,height=704,pitch=.55,yaw=0,threshold=4.5,project=true}={}){
+export async function prepareForest({density='high',geometry='full',width=384,height=704,pitch=.55,yaw=0,threshold=4.5,project=true,voxels=false}={}){
  if(!['full','auto','hierarchy'].includes(geometry))throw new Error('Unknown geometry mode');
  const started=performance.now();
  const world=createForestScene(density);
  const sceneBuilt=performance.now();
  const build=geometry==='hierarchy'?buildHierarchyAsset:buildNaniteLiteAsset;
  const assets=[await build(world.geometry,{meshletsPerGroup:64}),await build(world.treeGeometry,{meshletsPerGroup:64})];
+ if(voxels)assets[1]=await addVoxelRoot(assets[1],world.treeGeometry);
  const assetsBuilt=performance.now();
  const camera=new THREE.PerspectiveCamera(50,width/height,.1,500);camera.coordinateSystem=THREE.WebGPUCoordinateSystem;camera.updateProjectionMatrix();
  camera.position.set(0,world.heightAt(0,62)+1.7,62);camera.rotation.set(pitch,yaw,0,'YXZ');camera.updateMatrixWorld();
@@ -33,8 +35,8 @@ export async function prepareForest({density='high',geometry='full',width=384,he
     const clip=new THREE.Vector4(...sphere.center.toArray(),1).applyMatrix4(vp);
     const distance=Math.max(.01,(asset.hierarchy?clip.w:sphere.center.distanceTo(camera.position))-sphere.radius);
     const factor=camera.projectionMatrix.elements[5]*height/(2*distance);
-    if(asset.hierarchy&&asset.groupLods[offset+5]>0&&asset.groupLods[offset]*scale*factor>threshold){group++;continue;}
-    if(geometry==='auto')for(let l=5;l>0;l--)if(asset.groupLods[offset+l*4]*scale*factor<=threshold){level=l;break;}
+    if(asset.hierarchy&&asset.groupLods[offset+5]>0&&(asset.groupLods[offset]*scale*factor>threshold||(asset.voxelRoot&&geometry==='full'&&group>0))){group++;continue;}
+    if(geometry==='auto'&&!asset.hierarchy)for(let l=5;l>0;l--)if(asset.groupLods[offset+l*4]*scale*factor<=threshold){level=l;break;}
     const start=asset.groupLods[offset+level*4+1],count=asset.groupLods[offset+level*4+2];
     for(let cluster=start;cluster<start+count;cluster++){
      counts.meshletsTested++;sphere.center.fromArray(asset.clusterBounds,cluster*4).applyMatrix4(m);sphere.radius=asset.clusterBounds[cluster*4+3]*scale;

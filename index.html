@@ -24,7 +24,7 @@
           <option value="auto">Patch LOD</option>
           <option value="hierarchy" selected>Hierarchical LOD</option>
         </select></label>
-        <label class="mode-select"><span>Rasterizer</span><select id="rasterizer-mode" aria-label="Rasterizer"><option value="hardware">Hardware</option><option value="bitmask">Bitmask compute · forest</option><option value="bitmask-bounded">Bitmask · visible dispatch + pixel bounds</option><option value="bitmask-fast">Bitmask · triangle fast paths</option><option value="bitmask-visibility">Visibility + atomic HZB</option></select></label>
+        <label class="mode-select"><span>Rasterizer</span><select id="rasterizer-mode" aria-label="Rasterizer"><option value="hardware">Hardware</option><option value="bitmask">Bitmask compute · forest</option><option value="bitmask-bounded">Bitmask · visible dispatch + pixel bounds</option><option value="bitmask-fast">Bitmask · triangle fast paths</option><option value="bitmask-visibility">Visibility + atomic HZB</option><option value="bitmask-streaming">Visibility + atomic HZB · streaming</option><option value="bitmask-voxel">Streaming + distant surface voxels</option></select></label>
         <label class="toggle"><input id="geometry-view" type="checkbox" /><span>Geometry view</span></label>
         <button id="panel-toggle" type="button" aria-controls="controls-panel" aria-expanded="true">Controls</button>
         <div class="live-readout"><span id="mode-description" role="status">Hierarchical LOD · shaded</span>

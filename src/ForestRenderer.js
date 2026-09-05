@@ -1,3 +1,4 @@
+import { ForestStreamingRenderer } from './streaming/ForestStreamingRenderer.js';
 import { ForestVisibilityRenderer } from './visibility/ForestVisibilityRenderer.js';
 import * as THREE from 'three/webgpu';
 import { positionLocal, time, sin, vec3, float } from 'three/tsl';
@@ -28,9 +29,9 @@ export class ForestRenderer {
       return count;
     };
     this.terrain = new NaniteLiteRenderer(renderer,camera,terrainAsset,{sourceGeometry:world.geometry,
-      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,maxVisibleClusters:options.fullGeometry?fullCapacity(terrainAsset,1):8192,onStats:receive('terrain')});
+      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,streaming:options.bitmaskVariant==='streaming',maxVisibleClusters:options.fullGeometry?fullCapacity(terrainAsset,1):8192,onStats:receive('terrain')});
     this.trees = new NaniteLiteRenderer(renderer,camera,treeAsset,{sourceGeometry:world.treeGeometry,
-      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,instanceData:world.treeInstances,maxVisibleClusters:options.fullGeometry?fullCapacity(treeAsset,world.treeInstances.length/4):32768,onStats:receive('trees')});
+      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,streaming:options.bitmaskVariant==='streaming',instanceData:world.treeInstances,maxVisibleClusters:options.fullGeometry?fullCapacity(treeAsset,world.treeInstances.length/4):32768,onStats:receive('trees')});
     this.pipelines=[this.terrain,this.trees];
     this.asset=terrainAsset;
     const scene=this.terrain.scene;
@@ -47,7 +48,7 @@ export class ForestRenderer {
     this.water.position.set(0,.1,-9); scene.add(this.water);
     // A small physical roughness stops the lake becoming a mirror without IBL.
     waterMaterial.roughnessNode=float(.23);
-    if(options.bitmask)this.bitmask=options.bitmaskVariant==='visibility'?new ForestVisibilityRenderer(this):new ForestBitmaskRenderer(this,options.bitmaskVariant);
+    if(options.bitmask)this.bitmask=options.bitmaskVariant==='streaming'?new ForestStreamingRenderer(this):options.bitmaskVariant==='visibility'?new ForestVisibilityRenderer(this):new ForestBitmaskRenderer(this,options.bitmaskVariant);
   }
   async initBitmask() { if(this.bitmask)await this.bitmask.init(); }
   render(now) {

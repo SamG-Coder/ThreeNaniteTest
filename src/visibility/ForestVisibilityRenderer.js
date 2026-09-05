@@ -37,11 +37,12 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
     this.hzb=this.device.createTexture({size:[this.pyramidSize,this.pyramidSize],mipLevelCount:this.pyramidLevels,format:'r32float',usage:GPUTextureUsage.STORAGE_BINDING|GPUTextureUsage.TEXTURE_BINDING});
     if(this.layoutBuffer)this.allocateHistory();
   }
+  get geometryWGSL(){return visibilityWGSL;}
   async init(){
-    const module=this.device.createShaderModule({code:visibilityWGSL,label:'Forest visibility'});
+    const module=this.device.createShaderModule({code:this.geometryWGSL,label:'Forest visibility'});
     this.visibilityPipeline=await this.device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'vertexMain'},fragment:{module,entryPoint:'fragmentMain',targets:[{format:'r32uint'}]},primitive:{topology:'triangle-list',cullMode:'back',frontFace:'ccw'},depthStencil:{format:'depth32float',depthWriteEnabled:true,depthCompare:'less'}});
     this.compute={};
-    for(const [code,names] of [[visibilityWGSL,['coverage','shadeVisible']],[cullWGSL,['clearFrame','clearHistory','arguments','seed','recover']],[pyramidWGSL,['reduce']],[pyramidBaseWGSL,['base']]]){
+    for(const [code,names] of [[this.geometryWGSL,['coverage','shadeVisible']],[cullWGSL,['clearFrame','clearHistory','arguments','seed','recover']],[pyramidWGSL,['reduce']],[pyramidBaseWGSL,['base']]]){
       const m=this.device.createShaderModule({code});
       for(const entryPoint of names)this.compute[entryPoint]=await this.device.createComputePipelineAsync({layout:'auto',compute:{module:m,entryPoint}});
     }
