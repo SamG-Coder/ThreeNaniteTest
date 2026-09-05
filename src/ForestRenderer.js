@@ -1,3 +1,4 @@
+import { ForestVisibilityRenderer } from './visibility/ForestVisibilityRenderer.js';
 import * as THREE from 'three/webgpu';
 import { positionLocal, time, sin, vec3, float } from 'three/tsl';
 import { ForestBitmaskRenderer } from './bitmask/ForestBitmaskRenderer.js';
@@ -15,7 +16,7 @@ export class ForestRenderer {
       const values=[...this.samples.values()];
       const sum=key=>values.reduce((total,s)=>total+(s[key]??0),0);
       this.onStats({bitmask:this.enabled?this.bitmask?.metrics:null,naniteEnabled:this.enabled,sourceTriangles:sum('sourceTriangles'),
-        sourceSceneTriangles:sum('sourceSceneTriangles'),submittedTriangles:sum('submittedTriangles'),
+        sourceSceneTriangles:sum('sourceSceneTriangles'),submittedTriangles:this.bitmask?.metrics?.visibility?this.bitmask.metrics.submittedTriangles:sum('submittedTriangles'),
         visibleMeshlets:sum('visibleMeshlets'),capacity:sum('capacity'),instances:sum('instances'),
         groups:sum('groups'),lockedVertices:sum('lockedVertices'),assetBytes:sum('assetBytes'),
         overflowed:values.some(s=>s.overflowed),
@@ -46,7 +47,7 @@ export class ForestRenderer {
     this.water.position.set(0,.1,-9); scene.add(this.water);
     // A small physical roughness stops the lake becoming a mirror without IBL.
     waterMaterial.roughnessNode=float(.23);
-    if(options.bitmask)this.bitmask=new ForestBitmaskRenderer(this,options.bitmaskVariant);
+    if(options.bitmask)this.bitmask=options.bitmaskVariant==='visibility'?new ForestVisibilityRenderer(this):new ForestBitmaskRenderer(this,options.bitmaskVariant);
   }
   async initBitmask() { if(this.bitmask)await this.bitmask.init(); }
   render(now) {
@@ -66,7 +67,7 @@ export class ForestRenderer {
   setConeEnabled(value) { for(const p of this.pipelines) p.setConeEnabled(value); }
   setOcclusionEnabled() { for(const p of this.pipelines) p.setOcclusionEnabled(false); }
   setOccludersVisible() { for(const p of this.pipelines) p.setOccludersVisible(false); }
-  invalidateOcclusionHistory() { for(const p of this.pipelines) p.invalidateOcclusionHistory(); }
+  invalidateOcclusionHistory() { if(this.bitmask)this.bitmask.resetHistory=true; for(const p of this.pipelines) p.invalidateOcclusionHistory(); }
   resize() { for(const p of this.pipelines) p.resize(); this.bitmask?.resize(); }
   dispose() {
     this.bitmask?.dispose();

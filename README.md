@@ -258,3 +258,9 @@ The production shaders match the original depth/ID checksum on the exported fore
 ### Triangle fast paths (experimental)
 
 Select **Bitmask · triangle fast paths** in the main forest, or [open it at full detail](https://samg-coder.github.io/ThreeNaniteTest/?geometry=full&bitmaskVariant=fast). It avoids unnecessary clipping and repeated coverage checks, and shares shading within each triangle batch. Emulated total GPU medians improved about 15% in the spawn view and 2% in the canopy view; phone performance is unverified. [Changes, measurements and correctness checks](docs/RASTER_FAST_PATHS.md).
+
+### Visibility + atomic HZB
+
+[Open the new full-detail forest path](https://samg-coder.github.io/ThreeNaniteTest/?geometry=full&bitmaskVariant=visibility), or select **Visibility + atomic HZB** in the Rasterizer dropdown. It combines hardware depth/triangle-ID visibility, atomic 8×8 coverage masks, current-frame hierarchical occlusion rejection, indirect cluster draws and final-pixel shading. Hierarchical screen-space LOD remains a separate geometry option; earlier atomic software raster modes remain available.
+
+The emulated forest rejected 7,047 of 42,990 selected clusters on its second frame with exact depth/ID/colour parity against unculled hardware visibility. Phone performance is unverified. This implements the core visibility pathway; compressed geometry streaming and voxel foliage are not implemented. [Architecture, checks and reproduction](docs/ATOMIC_VISIBILITY_PATH.md).

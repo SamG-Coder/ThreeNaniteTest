@@ -120,8 +120,10 @@ export class ForestBitmaskRenderer {
     // A global list pool, not a 32-candidate tile limit. Dense tiles consume
     // more batches. Pool exhaustion uses an exhaustive software scan.
     this.entryCapacity=Math.min(8_388_608,Math.floor(this.device.limits.maxStorageBufferBindingSize/8));
+    if(this.variant!=='visibility'){
     this.heads=this.makeBuffer(this.tilesX*this.tilesY*(this.variant==='reject'?36:8),GPUBufferUsage.STORAGE);
     this.entries=this.makeBuffer(this.entryCapacity*8,GPUBufferUsage.STORAGE);
+    }
     this.depth=this.createTexture(THREE.RedFormat,THREE.FloatType);
     this.ids=this.createTexture(THREE.RedIntegerFormat,THREE.UnsignedIntType);
     this.color=this.createTexture(THREE.RGBAFormat,THREE.HalfFloatType);
@@ -160,20 +162,7 @@ export class ForestBitmaskRenderer {
       raster:this.device.createBindGroup({layout:this.pipelines.raster.getBindGroupLayout(0),entries})
     };
   }
-  render(now){
-    if(!this.groups)this.createGroups();
-    const read=!this.reading&&now-this.lastReadback>=500;
-    const f=new Float32Array(this.uniformBytes),u=new Uint32Array(this.uniformBytes);
-    f.set(this.forest.terrain.projScreenMatrix.elements,0);
-    f.set([...this.camera.position.toArray(),1],16);
-    u.set([this.width,this.height,this.tilesX,this.tilesX*this.tilesY],20);
-    const [a,b]=this.forest.pipelines;
-    u.set([a.maxVisibleClusters,b.maxVisibleClusters,a.asset.indices.length,b.asset.indices.length],24);
-    u.set([this.entryCapacity,{shaded:0,meshlets:1,lod:2,normals:3}[this.outputMode]??0,read?1:0,Math.min(a.maxVisibleClusters+b.maxVisibleClusters,this.device.limits.maxComputeWorkgroupsPerDimension)],28);
-    this.device.queue.writeBuffer(this.uniform,0,this.uniformBytes);
-    const encoder=this.device.createCommandEncoder({label:'Forest bitmask frame'});
-    encoder.copyBufferToBuffer(this.sharedBuffer(a.visibleCountAttribute),0,this.control,0,4);
-    encoder.copyBufferToBuffer(this.sharedBuffer(b.visibleCountAttribute),0,this.control,4,4);
+  encodeVisibility(encoder,a,b){
     for(const name of ['clear','bin','raster']){
       if(name==='bin'&&this.dispatchArgs){
         const prepare=encoder.beginComputePass({label:'Visible cluster dispatch'});
@@ -188,6 +177,22 @@ export class ForestBitmaskRenderer {
       else {const count=a.maxVisibleClusters+b.maxVisibleClusters;const width=Math.min(count,this.device.limits.maxComputeWorkgroupsPerDimension);pass.dispatchWorkgroups(width,Math.ceil(count/width));}
       pass.end();
     }
+  }
+  render(now){
+    if(!this.groups)this.createGroups();
+    const read=!this.reading&&now-this.lastReadback>=500;
+    const f=new Float32Array(this.uniformBytes),u=new Uint32Array(this.uniformBytes);
+    f.set(this.forest.terrain.projScreenMatrix.elements,0);
+    f.set([...this.camera.position.toArray(),1],16);
+    u.set([this.width,this.height,this.tilesX,this.tilesX*this.tilesY],20);
+    const [a,b]=this.forest.pipelines;
+    u.set([a.maxVisibleClusters,b.maxVisibleClusters,a.asset.indices.length,b.asset.indices.length],24);
+    u.set([this.entryCapacity,{shaded:0,meshlets:1,lod:2,normals:3}[this.outputMode]??0,read?1:0,Math.min(a.maxVisibleClusters+b.maxVisibleClusters,this.device.limits.maxComputeWorkgroupsPerDimension)],28);
+    this.device.queue.writeBuffer(this.uniform,0,this.uniformBytes);
+    const encoder=this.device.createCommandEncoder({label:'Forest bitmask frame'});
+    encoder.copyBufferToBuffer(this.sharedBuffer(a.visibleCountAttribute),0,this.control,0,4);
+    encoder.copyBufferToBuffer(this.sharedBuffer(b.visibleCountAttribute),0,this.control,4,4);
+    this.encodeVisibility(encoder,a,b);
     if(read)encoder.copyBufferToBuffer(this.control,0,this.readback,0,64);
     this.device.queue.submit([encoder.finish()]);
     if(read)this.readStats(now);

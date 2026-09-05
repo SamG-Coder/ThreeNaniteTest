@@ -1,0 +1,94 @@
+{
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 65,
+    "height": 49,
+    "capacity": [
+      4,
+      0
+    ],
+    "clusterCounts": [
+      4,
+      4
+    ],
+    "instanceCounts": [
+      1,
+      1
+    ],
+    "fixture": "solid occluder, hidden cluster, uncovered gap, near-plane crossing, partial tiles"
+  },
+  "limitations": [
+    "Software Vulkan, not phone timing",
+    "Uses exported CPU-selected cluster lists; Three selection is outside harness",
+    "Hardware coplanar ties can pick different IDs after list reordering"
+  ],
+  "frames": [
+    {
+      "enabled": true,
+      "seed": 0,
+      "recovery": 4,
+      "culled": 0,
+      "covered": 1535,
+      "wallMs": 4.717933006759267,
+      "frame": 0,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "412c094407279f2ad29edbf5d068992c2082054e0fedb1dcd820380ca6de83e0"
+    },
+    {
+      "enabled": true,
+      "seed": 3,
+      "recovery": 1,
+      "culled": 0,
+      "covered": 1535,
+      "wallMs": 2.7708030029316433,
+      "frame": 1,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "412c094407279f2ad29edbf5d068992c2082054e0fedb1dcd820380ca6de83e0"
+    },
+    {
+      "enabled": true,
+      "seed": 3,
+      "recovery": 0,
+      "culled": 1,
+      "covered": 1579,
+      "wallMs": 2.5159459983115084,
+      "frame": 2,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "1d8c7dd084ec1581427fabaf6f30c8c43401eeb03635bd85e48464973b07cd64"
+    },
+    {
+      "enabled": true,
+      "seed": 2,
+      "recovery": 2,
+      "culled": 0,
+      "covered": 80,
+      "wallMs": 2.690168999833986,
+      "frame": 3,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "fbf8c7d3efecf5d85327bb1b67a7ded4e8b5fe0950f5b9d697979a64900c803f"
+    }
+  ]
+}

@@ -52,3 +52,7 @@ python scripts/emulation/run-swiftshader.py /tmp/forest-profile --variants=origi
 The exporter records CPU scene construction, asset construction and a single CPU-equivalent selection duration separately. These are **not GPU selection timings** and must not be added to the raster totals. Projection is skipped for GPU export, avoiding unnecessary CPU triangle emulation. `--geometry=full|auto|hierarchy`, `--density`, `--yaw`, `--pitch`, `--width` and `--height` configure export. Keep each workload in its own directory so existing baseline checksums describe the same camera and assets.
 
 The native run uses the real source raster WGSL with the documented packed-vertex binding adaptation. It does not execute Three.js selection, sky/water, presentation, hardware rasterization, or phone drivers. The camera is a fixed spawn view, not recovered from the screenshots. Compare hotspot proportions within this adapter; don't convert them into estimated phone milliseconds.
+
+### Hardware visibility, atomic masks and HZB
+
+`export-gpu.mjs` also exports cluster bounds and the production visibility/HZB shaders. Run `python scripts/emulation/run-visibility.py /tmp/forest-profile` with the software ICD configured to compare occlusion on/off across frames and a camera change. `export-visibility-fixture.mjs` creates a small occluder/gap/near-plane fixture; use `--frames=4` to additionally remove its occluder and reuse a visible-list slot. See [the pathway document](../../docs/ATOMIC_VISIBILITY_PATH.md).
