@@ -1,120 +1,181 @@
-# ThreeNaniteTest
+# Three.js WebGPU Nanite Lite
 
-An experimental Nanite-inspired geometry renderer built with **Three.js 0.185.1** and **WebGPU**.
+A runnable GPU-driven geometry prototype for **Three.js 0.185.1** and WebGPU.
 
-The prototype explores GPU-driven meshlet culling, screen-space LOD selection, and indirect rendering in the browser. It uses discrete whole-object LODs; it does not implement Unreal Engine Nanite's hierarchical geometry system.
+This is not Unreal Engine Nanite. It implements a deliberately smaller and understandable subset that is useful in a browser renderer:
 
-## Get started
+- Spatial groups of up to 16 leaf meshlets, each with its own GPU-selected LOD
+- Explicit shared-boundary, open-border and attribute-seam vertex locks
+- 64-vertex / 64-triangle meshlets
+- Per-group and per-meshlet GPU frustum culling
+- Meshlet normal-cone backface culling
+- Screen-space geometric-error LOD selection
+- Experimental previous-frame hierarchical-Z occlusion culling (off by default)
+- GPU-compacted visible meshlet list
+- GPU-generated indirect draw arguments
+- Storage-buffer vertex pulling
+- One hardware-rasterized draw for the Nanite Lite geometry
+- Live GPU readback statistics and LOD distribution
+- Runtime `.glb` import for the largest static mesh
 
-The source project is currently packaged in [nanite-lite-threejs.zip](nanite-lite-threejs.zip).
+The project starts with a procedural torus knot containing 65,536 source triangles. It places 196 instances in the scene, representing roughly 12.8 million source triangles before visibility and LOD selection.
 
-1. Download and extract the ZIP.
-2. Open a terminal in the extracted `nanite-lite-threejs` directory.
-3. Install dependencies and start the development server:
+## Run it
+
+Requirements:
+
+- Node.js 22.12 or newer
+- A current Chrome or Edge build with WebGPU enabled
+- A WebGPU adapter supporting at least 12 storage buffers per shader stage (requested explicitly)
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the local address printed by Vite, normally **http://localhost:5173**.
+Then open the address printed by Vite, normally `http://localhost:5173`.
 
-Requirements:
-
-- Node.js **22.12 or newer**.
-- A browser and GPU with WebGPU support.
-- Serve the app through localhost or HTTPS.
-
-To build and preview locally:
+Production build:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-To run the included static syntax checks:
+Validation and topology regression tests:
 
 ```bash
 npm run validate
+npm test
 ```
-
-## Features
-
-- Six discrete LOD levels generated with meshoptimizer.
-- Meshlets with up to 64 vertices and 64 triangles.
-- GPU frustum culling for instances and meshlets.
-- Meshlet normal-cone backface culling.
-- Screen-space geometric-error LOD selection.
-- Experimental previous-frame hierarchical-Z occlusion culling.
-- GPU-compacted visible meshlet lists and GPU-generated indirect draw arguments.
-- Storage-buffer vertex pulling and one hardware-rasterized draw for the prototype geometry.
-- GPU readback statistics and LOD distribution.
-- Runtime GLB loading for the largest static mesh.
-
-The default scene contains 196 instances of a procedural torus knot with 65,536 source triangles each: approximately **12.8 million source triangles** before LOD selection and culling. This is source geometry count, not a claim about triangles rendered each frame or measured performance.
 
 ## Controls
 
-| Control | Action |
-| --- | --- |
-| Left drag | Orbit |
-| Mouse wheel | Zoom |
-| Right drag | Pan |
-| Output | Switch between shading, meshlet IDs, selected LOD, and world normals |
-| LOD error | Adjust acceptable projected geometric error in pixels |
-| Previous-frame HZB occlusion | Toggle experimental occlusion rejection |
-| Meshlet normal-cone culling | Toggle backface cluster rejection |
-| Show test occluders | Toggle the test wall |
-| Load .glb | Import the largest non-skinned static mesh |
+- Left drag: orbit
+- Mouse wheel: zoom
+- Right drag: pan
+- **Output**: shaded, meshlet IDs, selected LOD, or world normals
+- **LOD error**: acceptable projected geometric error in pixels
+- **Experimental HZB occlusion**: opt into research-grade GPU occlusion rejection
+- **Meshlet normal-cone culling**: reject clusters whose triangles all face away
+- **Show test occluders**: display or hide the wall used to exercise HZB culling
+- **Load .glb**: use the largest non-skinned static mesh in a binary glTF
 
-## How it works
-
-The asset builder generates simplified index-only LODs, splits each level into meshlets, computes bounds and normal cones, and packs the data into shared GPU buffers. LODs share the original position, normal, and UV streams.
-
-Each frame, compute passes cull instances, choose an LOD for each surviving instance, cull meshlets, and append visible meshlets to a compact list. The GPU then writes indirect draw arguments. The render shader pulls geometry from storage buffers, and a depth pyramid is built for subsequent-frame occlusion tests.
-
-## Project layout
-
-These paths are inside the extracted project:
+## Source layout
 
 ```text
-nanite-lite-threejs/
-  src/
-    main.js                  App, camera, and GLB loading
-    buildNaniteLiteAsset.js   LOD generation and meshlet packing
-    NaniteLiteRenderer.js     GPU culling, HZB, and indirect rendering
-    config.js                Meshlet, LOD, and scene limits
-    ui.js                    Controls and statistics
-    styles.css               Interface styling
-  docs/
-    ARCHITECTURE.md           Pipeline details
-    ROADMAP.md                Planned development
-  scripts/
-    validate.mjs             Static syntax checks
-  package.json
-  vite.config.js
+src/
+  partitionMeshlets.js        Spatial leaf grouping and conservative boundary locks
+  main.js                    Application bootstrap, camera and GLB loading
+  buildNaniteLiteAsset.js    Mesh simplification, meshlet generation and packing
+  NaniteLiteRenderer.js      GPU buffers, compute culling, HZB and indirect draw
+  config.js                  Meshlet, LOD and scene limits
+  ui.js                      Controls and GPU readback display
+  styles.css                 Demo interface
+
+docs/
+  ARCHITECTURE.md            Pipeline and data-flow explanation
+  ROADMAP.md                 Path from this prototype to a fuller Nanite system
 ```
 
-## Current limitations
+## What the prototype actually does
 
-- Whole-object LOD chains; no recursive cluster hierarchy or cluster DAG.
-- Geometry is fully resident in GPU memory; no geometry-page streaming.
-- Hardware rasterization only; no dedicated software rasterizer for tiny triangles.
-- One procedural material; imported material assignments are not preserved.
-- GLB import selects one static mesh, rather than loading a complete scene.
-- Skinned meshes, morph targets, transparency, transmission, and runtime vertex displacement are unsupported.
-- Previous-frame occlusion is experimental and lacks a production two-pass recovery system.
-- The visible meshlet list is capped at 16,384 entries by default.
-- The dummy position buffer used for indirect rendering allocates approximately 36 MiB at the default capacity.
+### Asset build
 
-This is a research prototype. Browser compatibility, rendering correctness, and performance need testing on the target device.
+`buildNaniteLiteAsset()` performs the following work in the browser:
 
-## Development direction
+1. Validates and copies the source attributes and triangle indices.
+2. Builds 64/64 leaf meshlets and spatially partitions them into groups of at most 16.
+3. Locks shared-position vertices across groups, plus explicit open/non-manifold and attribute-seam borders.
+4. Builds six index-only LODs independently for each group with accumulated simplification error.
+5. Re-clusters each group LOD and packs bounds, cones and indices into shared buffers.
+6. Uploads group bounds and a storage table of `(error, clusterStart, clusterCount, triangleCount)`.
 
-The next major step is replacing whole-object LODs with a hierarchy of grouped, simplified clusters, followed by GPU traversal and geometry streaming. See `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` inside the ZIP for more detail.
+Every group chooses its own LOD on the GPU. All levels share the original vertex stream, and locked borders preserve their original edges. Spatial grouping currently uses a deterministic longest-axis median split; it is not an adjacency-optimized partitioner.
 
-## Credits and license
+### GPU frame
 
-Built with [Three.js](https://threejs.org/) and [meshoptimizer](https://github.com/zeux/meshoptimizer), using the Three.js meshoptimizer add-ons.
+Each frame executes:
 
-The source archive includes an MIT license. Dependencies retain their own licenses.
+```text
+clear counters
+    ↓
+GPU group culling
+    ↓
+per-group screen-space LOD selection
+    ↓
+GPU meshlet frustum / cone / HZB culling
+    ↓
+compact visible meshlets with atomic append
+    ↓
+write non-indexed indirect draw arguments
+    ↓
+vertex-pulled hardware rasterization
+    ↓
+build current depth pyramid for the next frame
+    ↓
+present the HDR render target
+```
+
+The draw shader derives a visible-list slot and local meshlet vertex directly from `vertexIndex`:
+
+```text
+visibleSlot = vertexIndex / 192
+localVertex = vertexIndex % 192
+```
+
+It then reads `(instanceId, clusterId)` from the compacted visible list, pulls the cluster's real source index and vertex attributes from storage buffers, applies the GPU-generated instance transform and passes the result into a Three.js node material.
+
+## Important limits
+
+This prototype is intentionally honest about what it does not implement:
+
+- It uses **independent boundary-locked patch LOD chains**, not a recursive cluster DAG. Locked boundaries limit coarse reduction; the next step is merging groups into simplified parents.
+- All generated geometry is fully resident in GPU memory.
+- It does not stream geometry pages.
+- It uses hardware rasterization only; there is no specialised compute path for sub-pixel triangles.
+- A single procedural material is applied to Nanite Lite geometry.
+- The GLB loader selects one static mesh and ignores additional primitives and material assignments.
+- Skinned meshes, morph targets, transparency, transmission and runtime vertex displacement are unsupported.
+- Instance transforms use uniform scaling, allowing normals and culling bounds to use the same world matrix safely.
+- Occlusion is off by default. The inherited sphere projection is not conservative in all cases and there is no current-frame recovery pass. History is invalidated on camera movement, LOD-threshold changes, viewport changes and occluder visibility changes. Leave it disabled when checking coverage.
+- The fixed visible-list capacity is 16,384 meshlets. The UI displays an overflow warning when it is exceeded.
+
+## Memory note
+
+The indirect draw expands a visible meshlet into 192 vertex invocations. Three.js uses a dummy position attribute to establish a WebGPU-valid vertex range even though the shader pulls real positions from storage buffers. The dummy attribute uses an unused `float32x3` element, matching Three.js' normal position-buffer contract. At the default 16,384-meshlet capacity, it is approximately 36 MiB.
+
+Reduce `MAX_VISIBLE_CLUSTERS` in `src/config.js` for lower-memory devices. Increase it only after profiling.
+
+## Why the renderer uses 64/64 meshlets
+
+A 64-triangle meshlet maps cleanly to a 64-thread compute workgroup and gives predictable fixed-size expansion for the indirect draw. It is not universally optimal, but it is a reasonable cross-vendor starting point for WebGPU.
+
+## Moving toward a real hierarchy
+
+The next architectural step is replacing the independent group chains with a recursive cluster hierarchy:
+
+1. Build leaf meshlets.
+2. Partition topologically and spatially adjacent meshlets into groups.
+3. Simplify each group while locking the external boundary.
+4. Re-cluster the simplified parent representation.
+5. Repeat until a small root representation remains.
+6. Traverse nodes on the GPU with ping-pong queues.
+7. Render a resident parent when requested child pages are unavailable.
+
+See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Credits
+
+The implementation is built on:
+
+- [Three.js](https://threejs.org/) WebGPU renderer and TSL
+- [meshoptimizer](https://github.com/zeux/meshoptimizer) simplification and meshlet algorithms, exposed through the Three.js add-on modules
+
+Both dependencies are installed through npm and retain their own licences.
+
+## Validation of the grouped implementation
+
+`npm test` checks exact full-resolution triangle coverage and winding, unchanged boundary edges at every group LOD, valid indices and enclosing group bounds, monotonic error/counts, deterministic builds, malformed input rejection, and WebGPU near-plane frustum extraction.
+
+The production build and CPU tests were run in the hosted workspace. Browser shader compilation and visual WebGPU behavior have not been verified there: no local browser executable is installed. These tests do not establish rendering performance or general crack-free behavior for arbitrary malformed/non-manifold imports.

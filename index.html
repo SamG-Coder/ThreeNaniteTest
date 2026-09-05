@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090d13" />
+    <title>Three.js WebGPU — Nanite Lite</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="viewport"></canvas>
+
+      <header class="topbar glass">
+        <div>
+          <div class="eyebrow">THREE.JS · WEBGPU · GPU DRIVEN</div>
+          <h1>Nanite Lite</h1>
+        </div>
+        <div id="status-pill" class="status-pill">Initialising WebGPU</div>
+      </header>
+
+      <aside class="panel glass" aria-label="Nanite Lite controls">
+        <section>
+          <h2>Renderer</h2>
+
+          <label class="field">
+            <span>Output</span>
+            <select id="output-mode">
+              <option value="shaded">Shaded</option>
+              <option value="meshlets">Meshlets</option>
+              <option value="lod">LOD level</option>
+              <option value="normals">Normals</option>
+            </select>
+          </label>
+
+          <label class="field range-field">
+            <span>LOD error <output id="lod-value">4.5 px</output></span>
+            <input id="lod-threshold" type="range" min="0.5" max="10" value="4.5" step="0.1" />
+          </label>
+
+          <label class="toggle">
+            <input id="occlusion-enabled" type="checkbox" />
+            <span>Experimental HZB occlusion</span>
+          </label>
+
+          <label class="toggle">
+            <input id="cone-enabled" type="checkbox" checked />
+            <span>Meshlet normal-cone culling</span>
+          </label>
+
+          <label class="toggle">
+            <input id="occluders-visible" type="checkbox" checked />
+            <span>Show test occluders</span>
+          </label>
+        </section>
+
+        <section>
+          <h2>Asset</h2>
+          <div id="asset-name" class="asset-name">Procedural torus knot</div>
+          <p class="muted">Load a binary glTF. The largest mesh is normalised and rebuilt into boundary-locked meshlet groups in the browser.</p>
+          <label class="file-button">
+            <input id="asset-file" type="file" accept=".glb,model/gltf-binary" />
+            Load .glb
+          </label>
+          <button id="restore-default" type="button" class="secondary-button">Restore procedural demo</button>
+        </section>
+
+        <section>
+          <h2>GPU statistics</h2>
+          <dl class="stats-grid">
+            <div><dt>Source triangles</dt><dd id="stat-source-triangles">—</dd></div>
+            <div><dt>Groups per asset</dt><dd id="stat-groups">—</dd></div>
+            <div><dt>Instances</dt><dd id="stat-instances">—</dd></div>
+            <div><dt>Source scene</dt><dd id="stat-source-scene">—</dd></div>
+            <div><dt>Visible meshlets</dt><dd id="stat-visible-meshlets">—</dd></div>
+            <div><dt>Submitted triangles</dt><dd id="stat-submitted-triangles">—</dd></div>
+            <div><dt>Visible-list use</dt><dd id="stat-capacity">—</dd></div>
+          </dl>
+          <div id="lod-bars" class="lod-bars"></div>
+          <div id="overflow-warning" class="warning hidden">Visible-list capacity was exceeded. Raise <code>MAX_VISIBLE_CLUSTERS</code> or reduce the scene.</div>
+        </section>
+
+        <section class="actions">
+          <button id="reset-camera" type="button">Reset camera</button>
+        </section>
+      </aside>
+
+      <footer class="help glass">
+        Drag to orbit · wheel to zoom · right-drag to pan
+      </footer>
+
+      <div id="loading" class="loading visible" role="status" aria-live="polite">
+        <div class="spinner"></div>
+        <strong id="loading-title">Building meshlets</strong>
+        <span id="loading-detail">Preparing the GPU-driven scene…</span>
+      </div>
+
+      <div id="fatal-error" class="fatal-error hidden">
+        <h2>Unable to start</h2>
+        <pre id="fatal-error-text"></pre>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
