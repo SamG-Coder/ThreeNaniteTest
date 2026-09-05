@@ -2,7 +2,7 @@
 export function rasterVariant(search='') {
   const params=new URLSearchParams(search);
   const requested=params.get('bitmaskVariant');
-  if(['original','owned','cached'].includes(requested))return requested;
+  if(['original','owned','cached','reject'].includes(requested))return requested;
   return params.get('bitmaskReference')==='0'?'cached':'original';
 }
-export const rasterVariantLabels={original:'original',owned:'triangle-owned masks',cached:'depth cache (slower on tested phone)'};
+export const rasterVariantLabels={reject:'tile rejection',original:'original',owned:'triangle-owned masks',cached:'depth cache (slower on tested phone)'};

@@ -3,6 +3,7 @@ import { Discard, Fn, If, screenCoordinate, textureLoad, uint } from 'three/tsl'
 import { forestRasterWGSL } from './forestShaders.js';
 import { forestReferenceWGSL } from './forestReferenceShaders.js';
 import { forestOwnedMaskWGSL } from './forestOwnedMaskShaders.js';
+import { forestRejectWGSL } from './forestRejectShaders.js';
 import { rasterVariant, rasterVariantLabels } from './variant.js';
 import { FrameGate, FrameProbe, frameOptions } from './FrameExperiment.js';
 
@@ -21,8 +22,8 @@ export class ForestBitmaskRenderer {
     this.selectionNodes=null;
     this.uniformBytes=new ArrayBuffer(128);
     this.uniform=this.makeBuffer(128,GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST);
-    this.control=this.makeBuffer(32,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);
-    this.readback=this.makeBuffer(32,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
+    this.control=this.makeBuffer(64,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);
+    this.readback=this.makeBuffer(64,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
     this.assets=forest.pipelines.map(p=>{
       const vertices=new Float32Array(p.asset.vertexCount*12);
       for(let i=0;i<p.asset.vertexCount;i++){
@@ -86,7 +87,7 @@ export class ForestBitmaskRenderer {
     if(data)this.device.queue.writeBuffer(b,0,data);return b;
   }
   async init(){
-    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:{original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL}[this.variant]});
+    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:{reject:forestRejectWGSL,original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL}[this.variant]});
     const info=await module.getCompilationInfo();
     const errors=info.messages.filter(m=>m.type==='error');
     if(errors.length)throw new Error(errors.map(e=>`Forest WGSL ${e.lineNum}: ${e.message}`).join('\n'));
@@ -111,7 +112,7 @@ export class ForestBitmaskRenderer {
     // A global list pool, not a 32-candidate tile limit. Dense tiles consume
     // more batches. Pool exhaustion uses an exhaustive software scan.
     this.entryCapacity=Math.min(8_388_608,Math.floor(this.device.limits.maxStorageBufferBindingSize/8));
-    this.heads=this.makeBuffer(this.tilesX*this.tilesY*8,GPUBufferUsage.STORAGE);
+    this.heads=this.makeBuffer(this.tilesX*this.tilesY*(this.variant==='reject'?36:8),GPUBufferUsage.STORAGE);
     this.entries=this.makeBuffer(this.entryCapacity*8,GPUBufferUsage.STORAGE);
     this.depth=this.createTexture(THREE.RedFormat,THREE.FloatType);
     this.ids=this.createTexture(THREE.RedIntegerFormat,THREE.UnsignedIntType);
@@ -173,7 +174,7 @@ export class ForestBitmaskRenderer {
       else {const count=a.maxVisibleClusters+b.maxVisibleClusters;const width=Math.min(count,this.device.limits.maxComputeWorkgroupsPerDimension);pass.dispatchWorkgroups(width,Math.ceil(count/width));}
       pass.end();
     }
-    if(read)encoder.copyBufferToBuffer(this.control,0,this.readback,0,32);
+    if(read)encoder.copyBufferToBuffer(this.control,0,this.readback,0,64);
     this.device.queue.submit([encoder.finish()]);
     if(read)this.readStats(now);
     // Keep the existing lake and sky. Forest geometry has no hardware draw.
@@ -202,6 +203,7 @@ export class ForestBitmaskRenderer {
     this.readback.mapAsync(GPUMapMode.READ).then(()=>{
       const counters=new Uint32Array(this.readback.getMappedRange()).slice();this.readback.unmap();
       if(!this.disposed&&generation===this.generation)this.metrics={
+        work:this.variant==='reject'?{candidates:counters[6],edgeRejected:counters[7],depthRejected:counters[8],samples:counters[9],wins:counters[10],resolves:counters[11],rasterCandidates:counters[12]}:null,
         variant:rasterVariantLabels[this.variant],entries:Math.min(counters[2],this.entryCapacity),capacity:this.entryCapacity,
         overflowTiles:counters[3],covered:counters[4],batches:counters[5],width:this.width,height:this.height
       };

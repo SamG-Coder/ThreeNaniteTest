@@ -5,6 +5,7 @@ import { initSync, WgslFrontend } from 'web-naga';
 import { resolveBatches, resolveReference, clipNearPlane, sampleDepth, EMPTY_ID } from '../src/bitmask/reference.js';
 import { forestRasterWGSL } from '../src/bitmask/forestShaders.js';
 import { forestReferenceWGSL } from '../src/bitmask/forestReferenceShaders.js';
+import { forestRejectWGSL } from '../src/bitmask/forestRejectShaders.js';
 import { forestOwnedMaskWGSL } from '../src/bitmask/forestOwnedMaskShaders.js';
 import { rasterVariant } from '../src/bitmask/variant.js';
 import { ForestRenderer } from '../src/ForestRenderer.js';
@@ -27,7 +28,7 @@ test('near-plane clipping handles crossings and exact endpoints without duplicat
 test('forest WGSL parses and emits including workgroup mask synchronization',()=>{
   initSync({module:readFileSync(new URL('./web_naga_bg.wasm',import.meta.resolve('web-naga')))});
   const frontend=WgslFrontend.new();
-  try { for(const code of [forestRasterWGSL,forestReferenceWGSL,forestOwnedMaskWGSL]) { const module=frontend.parse(code);try{assert.ok(module.to_wgsl().length>0);}finally{module.free();} } }
+  try { for(const code of [forestRasterWGSL,forestReferenceWGSL,forestOwnedMaskWGSL,forestRejectWGSL]) { const module=frontend.parse(code);try{assert.ok(module.to_wgsl().length>0);}finally{module.free();} } }
   finally{frontend.free();}
 });
 test('forest software mode submits both compute selections and hides geometry hardware draws',()=>{

@@ -263,6 +263,7 @@ export class DemoUI {
       ? 'Meshlet capacity exceeded · some geometry was dropped'
       : `${submitted} submitted / ${source} source · ${reduction.toFixed(0)}% fewer`;
     if(stats.bitmask)this.elements.geometryReadout.textContent+=` · ${stats.bitmask.variant} · ${compactFormatter.format(stats.bitmask.batches)} mask batches · ${stats.bitmask.overflowTiles} scan tiles`;
+    if(stats.bitmask?.work){const w=stats.bitmask.work;this.elements.geometryReadout.textContent+=` · candidate tiles ${compactFormatter.format(w.candidates)} · edge rejected ${compactFormatter.format(w.edgeRejected)} · depth rejected ${compactFormatter.format(w.depthRejected)}/${compactFormatter.format(w.rasterCandidates)} · coverage tests ${compactFormatter.format(w.samples)} · depth tests ${compactFormatter.format(w.resolves)} · winner updates ${compactFormatter.format(w.wins)}`;}
     this.elements.geometryReadout.classList.toggle('capacity-error', Boolean(stats.overflowed));
     this.elements.geometryReadout.title = 'Meshlet submission counts include padded meshlet triangles. Fewer submitted triangles does not guarantee higher FPS.';
     this.elements.sourceTriangles.textContent = numberFormatter.format(
