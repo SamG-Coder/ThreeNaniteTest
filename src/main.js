@@ -124,7 +124,7 @@ async function geometryFromGlb(file) {
 }
 
 async function rebuildScene(geometry, displayName, world = null, preserveCamera = false) {
-  const mode = ui.elements.renderMode.value === 'auto' || ui.elements.renderMode.value === 'full' ? 'auto' : 'nanite';
+  const mode = ui.elements.renderMode.value === 'auto' || ui.elements.renderMode.value === 'full' ? 'auto' : 'hierarchy';
   const sourceRecord = preserveCamera ? activeSource : { geometry, displayName, world, assets: new Map() };
   const wasWalking = gameControls?.enabled;
   const generation = ++rebuildGeneration;
@@ -133,13 +133,13 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
   ui.clearFps();
   gameControls?.setEnabled(false);
 
-  ui.showLoading(`Building ${mode === 'nanite' ? 'Nanite hierarchy' : 'Auto LOD'}`, 'Preparing source geometry…');
+  ui.showLoading(`Building ${mode === 'hierarchy' ? 'cluster hierarchy' : 'Patch LOD'}`, 'Preparing source geometry…');
   ui.setAssetName(displayName);
 
   // Yield once so the loading overlay is painted before CPU-side mesh building.
   await new Promise((resolve) => requestAnimationFrame(resolve));
 
-  const buildAsset = mode === 'nanite' ? buildHierarchyAsset : buildNaniteLiteAsset;
+  const buildAsset = mode === 'hierarchy' ? buildHierarchyAsset : buildNaniteLiteAsset;
   const cached = sourceRecord.assets.get(mode);
   const asset = cached?.asset ?? await buildAsset(geometry, {
     meshletsPerGroup: world ? 64 : 16,
@@ -215,7 +215,7 @@ async function initialise() {
 
   const adapter = await navigator.gpu.requestAdapter();
   if (!adapter || adapter.limits.maxStorageBuffersPerShaderStage < 12) {
-    throw new Error('This device cannot run the Nanite compute pipeline. It requires WebGPU with at least 12 storage buffers per shader stage.');
+    throw new Error('This device cannot run the geometry compute pipeline. It requires WebGPU with at least 12 storage buffers per shader stage.');
   }
 
   renderer = new THREE.WebGPURenderer({

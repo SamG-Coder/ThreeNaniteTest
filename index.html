@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#090d13" />
-    <title>Three.js WebGPU — Nanite Lite</title>
+    <title>Three.js WebGPU — Geometry LOD</title>
   </head>
   <body>
     <div id="app">
@@ -21,22 +21,22 @@
       <nav class="quick-controls glass" aria-label="View controls">
         <label class="mode-select"><span>Geometry</span><select id="render-mode" aria-label="Geometry rendering mode">
           <option value="full">Full resolution</option>
-          <option value="auto">Auto LOD</option>
-          <option value="nanite" selected>Nanite (experimental)</option>
+          <option value="auto">Patch LOD</option>
+          <option value="hierarchy" selected>Hierarchical LOD</option>
         </select></label>
-        <label class="toggle"><input id="nanite-view" type="checkbox" /><span>Nanite view</span></label>
+        <label class="toggle"><input id="geometry-view" type="checkbox" /><span>Geometry view</span></label>
         <button id="panel-toggle" type="button" aria-controls="controls-panel" aria-expanded="true">Controls</button>
-        <div class="live-readout"><span id="mode-description" role="status">Nanite (experimental) · shaded</span>
+        <div class="live-readout"><span id="mode-description" role="status">Hierarchical LOD · shaded</span>
           <span class="fps-readout" title="Animation-frame cadence; not GPU execution time"><strong id="fps-value">—</strong> FPS <span id="frame-ms">— ms</span></span><span id="geometry-readout" class="geometry-readout">Preparing geometry…</span></div>
       </nav>
 
-      <aside id="controls-panel" class="panel glass" aria-label="Nanite Lite controls">
+      <aside id="controls-panel" class="panel glass" aria-label="Geometry LOD controls">
         <section>
           <h2>Renderer</h2>
-          <p class="muted">FPS measures frame cadence. Compare Full resolution, Auto LOD and Nanite (experimental). Nanite refines a cluster hierarchy by pixel error. Lake shading stays identical.</p>
+          <p class="muted">FPS measures frame cadence. Compare Full resolution, Patch LOD and Hierarchical LOD. Hierarchical LOD refines a cluster hierarchy by pixel error. Lake shading stays identical.</p>
 
           <label class="field">
-            <span>Nanite visualization</span>
+            <span>Geometry visualization</span>
             <select id="output-mode">
               <option value="meshlets">Meshlet clusters</option>
               <option value="lod">LOD level</option>

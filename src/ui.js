@@ -29,7 +29,7 @@ export class DemoUI {
       gameHud: document.querySelector('#game-hud'),
       outputMode: document.querySelector('#output-mode'),
       renderMode: document.querySelector('#render-mode'),
-      naniteView: document.querySelector('#nanite-view'),
+      geometryView: document.querySelector('#geometry-view'),
       panelToggle: document.querySelector('#panel-toggle'),
       panel: document.querySelector('#controls-panel'),
       modeDescription: document.querySelector('#mode-description'),
@@ -92,7 +92,7 @@ export class DemoUI {
       this.syncRendererControls();
       this.onRenderModeChange?.();
     });
-    this.elements.naniteView.addEventListener('change', () => this.syncRendererControls());
+    this.elements.geometryView.addEventListener('change', () => this.syncRendererControls());
     this.elements.panelToggle.addEventListener('click', () => {
       this.setPanelOpen(this.elements.panel.hidden);
     });
@@ -180,8 +180,8 @@ export class DemoUI {
 
   syncRendererControls() {
     const enabled = this.elements.renderMode.value !== 'full';
-    const visualizing = enabled && this.elements.naniteView.checked;
-    this.elements.naniteView.disabled = !enabled;
+    const visualizing = enabled && this.elements.geometryView.checked;
+    this.elements.geometryView.disabled = !enabled;
     this.elements.outputMode.disabled = !visualizing;
     for (const key of ['lodThreshold', 'occlusionEnabled', 'coneEnabled']) {
       this.elements[key].disabled = !enabled;
@@ -190,7 +190,7 @@ export class DemoUI {
     this.pipeline?.setOutputMode(mode);
     const label = visualizing ? this.elements.outputMode.selectedOptions[0].text : 'shaded';
     this.elements.modeDescription.textContent = enabled
-      ? `${this.elements.renderMode.value === 'nanite' ? 'Nanite (experimental)' : 'Auto LOD'} · ${label}` : 'Full resolution';
+      ? `${this.elements.renderMode.value === 'hierarchy' ? 'Hierarchical LOD' : 'Patch LOD'} · ${label}` : 'Full resolution';
     this.elements.lodBars.hidden = !enabled;
   }
 

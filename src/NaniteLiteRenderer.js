@@ -325,7 +325,7 @@ export class NaniteLiteRenderer {
         });
       })()
         .compute(initial.y * initial.z, [64])
-        .setName(`Nanite Lite HZB ${level}`);
+        .setName(`Geometry HZB ${level}`);
 
       this.hzbKernels.push(kernel);
       this.computeNodes.push(kernel);
@@ -515,7 +515,7 @@ export class NaniteLiteRenderer {
       });
     })()
       .compute(Math.max(asset.lods.length, 1), [64])
-      .setName('Nanite Lite Clear');
+      .setName('Geometry Clear');
 
     const frustumPlanesUniform = this.frustumPlanesUniform;
     const cameraPositionUniform = this.cameraPositionUniform;
@@ -688,7 +688,7 @@ export class NaniteLiteRenderer {
       } else processGroup(initialGroup);
     })()
       .compute(this.instanceCount * (asset.hierarchy ? 1 : asset.groupCount), [64])
-      .setName(asset.hierarchy ? 'Nanite Hierarchy Traversal' : 'Auto LOD Group Cull');
+      .setName(asset.hierarchy ? 'Hierarchical LOD Traversal' : 'Patch LOD Group Cull');
 
     this.computeDrawArguments = Fn(() => {
       const visibleCount = min(
@@ -704,7 +704,7 @@ export class NaniteLiteRenderer {
       drawIndirectBuffer.element(3).assign(uint(0));
     })()
       .compute(1)
-      .setName('Nanite Lite Draw Arguments');
+      .setName('Geometry Draw Arguments');
 
     this.computeNodes.push(
       this.computeClear,
@@ -1115,7 +1115,7 @@ export class NaniteLiteRenderer {
     } catch (error) {
       // Readback is diagnostic only; rendering should continue if a browser or
       // backend refuses an overlapping asynchronous map operation.
-      console.warn('Nanite Lite stats readback failed:', error);
+      console.warn('Geometry stats readback failed:', error);
     } finally {
       this.readbackInFlight = false;
     }

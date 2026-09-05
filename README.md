@@ -1,4 +1,4 @@
-# Three.js WebGPU Nanite Lite
+# Three.js WebGPU Geometry LOD
 
 A runnable GPU-driven geometry prototype for **Three.js 0.185.1** and WebGPU.
 
@@ -7,13 +7,13 @@ The **Geometry** selector now offers three distinct paths:
 | Mode | Geometry selection |
 | --- | --- |
 | Full resolution | Original indexed instances; bypasses meshlet compute |
-| Auto LOD | The previous implementation: six independent boundary-locked LODs per spatial patch |
-| Nanite (experimental) | New recursive cluster tree; GPU traversal selects parents or refines into children by projected pixel error |
+| Patch LOD | The previous implementation: six independent boundary-locked LODs per spatial patch |
+| Hierarchical LOD | New recursive cluster tree; GPU traversal selects parents or refines into children by projected pixel error |
 
-Nanite (experimental) is the default. This is a browser experiment, not Epic's Nanite implementation. Both optimized modes include:
+Hierarchical LOD is the default. This is a browser experiment, not Epic's Nanite implementation. Both optimized modes include:
 
-- Auto LOD: spatial groups of up to 64 leaf meshlets in the terrain scene (16 in the mesh stress test)
-- Nanite: eight-meshlet leaves, recursively merged/simplified/reclustered parents, and stackless GPU traversal
+- Patch LOD: spatial groups of up to 64 leaf meshlets in the terrain scene (16 in the mesh stress test)
+- Hierarchical LOD: eight-meshlet leaves, recursively merged/simplified/reclustered parents, and stackless GPU traversal
 - Explicit shared-boundary, open-border and attribute-seam vertex locks
 - 64-vertex / 64-triangle meshlets
 - Per-group and per-meshlet GPU frustum culling
@@ -23,13 +23,13 @@ Nanite (experimental) is the default. This is a browser experiment, not Epic's N
 - GPU-compacted visible meshlet list
 - GPU-generated indirect draw arguments
 - Storage-buffer vertex pulling
-- One hardware-rasterized draw per Nanite Lite asset batch (terrain and trees in the forest)
+- One hardware-rasterized draw per geometry asset batch (terrain and trees in the forest)
 - Live GPU readback statistics and LOD distribution
 - Runtime `.glb` import for the largest static mesh
 
 The default map is **Emerald Basin**, a natural forest stress test with a mountain lake, granite outcrops and detailed broadleaf trees. The map contains no buildings. Trees contain modeled branches and individual opaque 3D leaves, rather than solid canopy blobs or alpha cards.
 
-The scene stores one high-detail tree asset and places it 96, 256 or 512 times with deterministic positions, rotations and scales. All three modes use identical source geometry and instance placement. Full resolution draws the original indexed instances; Auto LOD and Nanite use their respective selection algorithms and meshlet culling. Terrain and forest use separate indirect draws in one scene and one presentation pass. Geometry readouts sum both batches; FPS includes lake shading too.
+The scene stores one high-detail tree asset and places it 96, 256 or 512 times with deterministic positions, rotations and scales. All three modes use identical source geometry and instance placement. Full resolution draws the original indexed instances; Patch LOD and Hierarchical LOD use their respective selection algorithms and meshlet culling. Terrain and forest use separate indirect draws in one scene and one presentation pass. Geometry readouts sum both batches; FPS includes lake shading too.
 
 The original mesh stress test and mountain terrain sample remain available in Controls.
 
@@ -59,10 +59,10 @@ Relative asset paths support the repository subdirectory and local preview.
 - Desktop: click the scene for mouse look; WASD/arrow keys move, Shift sprints, Space jumps, Escape releases the mouse.
 - Mobile: left joystick moves, swiping the scene looks around, and Jump jumps. Walking follows the ground and uses approximate collision against trunks, rocks and the lake boundary.
 - Walking / Orbit camera switches navigation. Reset position returns to the spawn or overview.
-- Nanite view shows meshlet clusters, LODs or normals for the terrain and trees together.
+- Geometry view shows meshlet clusters, LODs or normals for the terrain and trees together.
 - FPS and mean ms/frame measure animation-frame cadence, not isolated GPU execution time. Hidden tabs and asset-building periods are excluded; changing geometry mode resets the sample. Display refresh rate can cap FPS.
 - The geometry readout compares padded submitted meshlet triangles with source triangles. Capacity overflow is shown explicitly. A lower triangle count does not guarantee higher FPS; culling and compute have overhead.
-- The lake uses the same opaque animated water material in all three modes. It is outside the Nanite asset statistics and is not used to manufacture a geometry speedup. It has no planar reflections or refraction.
+- The lake uses the same opaque animated water material in all three modes. It is outside the meshlet asset statistics and is not used to manufacture a geometry speedup. It has no planar reflections or refraction.
 - Experimental previous-frame HZB is disabled in the multi-asset forest map. Frustum culling, normal-cone culling and the selected geometry algorithm remain active.
 - The forest reserves 32,768 visible tree meshlets plus 8,192 terrain meshlets. The fixed dummy vertex buffers consume approximately 90 MiB combined. GPU assets and baseline buffers require additional memory.
 - Terrain sample uses the selected density for 256², 512² or 1024² grid subdivisions. Mesh stress test retains its original 49/196-instance grid.
@@ -102,7 +102,7 @@ npm test
 - Left drag: orbit
 - Mouse wheel: zoom
 - Right drag: pan
-- **Nanite view**: toggle meshlet IDs, selected LOD, or world normals; off returns to shading
+- **Geometry view**: toggle meshlet IDs, selected LOD, or world normals; off returns to shading
 - **LOD error**: acceptable projected geometric error in pixels
 - **Experimental HZB occlusion**: opt into research-grade GPU occlusion rejection
 - **Meshlet normal-cone culling**: reject clusters whose triangles all face away
@@ -129,14 +129,14 @@ src/
 
 docs/
   ARCHITECTURE.md            Pipeline and data-flow explanation
-  ROADMAP.md                 Path from this prototype to a fuller Nanite system
+  ROADMAP.md                 Path from this prototype to a streamed geometry system
 ```
 
 ## What the prototype actually does
 
 ### Asset build
 
-For **Auto LOD**, `buildNaniteLiteAsset()` performs the following work in the browser:
+For **Patch LOD**, `buildNaniteLiteAsset()` performs the following work in the browser:
 
 1. Validates and copies the source attributes and triangle indices.
 2. Builds 64/64 leaf meshlets and spatially partitions them into groups of at most 16 (64 for terrain and trees).
@@ -149,7 +149,7 @@ Every group chooses its own LOD on the GPU. All levels share the original vertex
 
 ### GPU frame
 
-The Auto LOD frame executes the following sequence. Nanite replaces the first two selection stages with recursive GPU hierarchy traversal:
+The Patch LOD frame executes the following sequence. Hierarchical LOD replaces the first two selection stages with recursive GPU hierarchy traversal:
 
 ```text
 clear counters
@@ -184,11 +184,11 @@ It then reads `(instanceId, clusterId)` from the compacted visible list, pulls t
 
 This prototype is intentionally honest about what it does not implement:
 
-- Auto LOD uses independent patch chains; Nanite uses a recursive binary tree. Neither implements a repartitioned cluster DAG.
+- Patch LOD uses independent patch chains; Hierarchical LOD uses a recursive binary tree. Neither implements a repartitioned cluster DAG.
 - The active mode’s generated geometry is fully resident in GPU memory; inactive mode assets are cached on the CPU.
 - It does not stream geometry pages.
 - It uses hardware rasterization only; there is no specialised compute path for sub-pixel triangles.
-- One material is used per Nanite Lite draw. The game scene uses vertex colors; the mesh stress test uses a procedural checker. Imported material assignments remain unsupported.
+- One material is used per geometry draw. The game scene uses vertex colors; the mesh stress test uses a procedural checker. Imported material assignments remain unsupported.
 - The GLB loader selects one static mesh and ignores additional primitives and material assignments.
 - Skinned meshes, morph targets, transparency, transmission and runtime vertex displacement are unsupported.
 - Instance transforms use uniform scaling, allowing normals and culling bounds to use the same world matrix safely.
