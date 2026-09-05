@@ -30,7 +30,7 @@ shader=shader.replace('id:u32 };','id:u32, @location(1) @interpolate(flat) cover
    // Stable stochastic coverage: rejected samples never write ID or depth.
    // No frame-dependent random value: the seed and recovery passes agree.
    if(input.coverage<1.0){
-     var h=u32(input.position.x)*1597334677u^u32(input.position.y)*3812015801u^input.stable;
+     var h=(u32(input.position.x)*1597334677u)^(u32(input.position.y)*3812015801u)^input.stable;
      h=(h^(h>>16u))*2246822519u;h=(h^(h>>13u))*3266489917u;h=h^(h>>16u);
      if(f32(h&0x00ffffffu)/16777216.0>=input.coverage){discard;}
    }

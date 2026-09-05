@@ -17,7 +17,8 @@
   },
   "devDependencies": {
     "vite": "8.2.2",
-    "web-naga": "1.0.1"
+    "web-naga": "1.0.1",
+    "webgpu": "0.6.0"
   },
   "engines": {
     "node": ">=22.12.0"

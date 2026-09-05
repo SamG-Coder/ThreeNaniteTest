@@ -40,6 +40,9 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
   get geometryWGSL(){return visibilityWGSL;}
   async init(){
     const module=this.device.createShaderModule({code:this.geometryWGSL,label:'Forest visibility'});
+    const compilation=await module.getCompilationInfo();
+    const errors=compilation.messages.filter(message=>message.type==='error');
+    if(errors.length)throw new Error(errors.map(message=>`Forest visibility WGSL ${message.lineNum}:${message.linePos}: ${message.message}`).join('\n'));
     this.visibilityPipeline=await this.device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'vertexMain'},fragment:{module,entryPoint:'fragmentMain',targets:[{format:'r32uint'}]},primitive:{topology:'triangle-list',cullMode:'back',frontFace:'ccw'},depthStencil:{format:'depth32float',depthWriteEnabled:true,depthCompare:'less'}});
     this.compute={};
     for(const [code,names] of [[this.geometryWGSL,['coverage','shadeVisible']],[cullWGSL,['clearFrame','clearHistory','arguments','seed','recover']],[pyramidWGSL,['reduce']],[pyramidBaseWGSL,['base']]]){
