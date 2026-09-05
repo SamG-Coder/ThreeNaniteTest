@@ -21,10 +21,15 @@ export class ForestRenderer {
         overflowed:values.some(s=>s.overflowed),
         lodCounts:terrainAsset.lods.map((_,i)=>values.reduce((total,s)=>total+(s.lodCounts[i]??0),0))});
     };
+    const fullCapacity=(asset,instances)=>{
+      const count=asset.lods[0].clusterCount*instances;
+      if(count*8>renderer.backend.device.limits.maxStorageBufferBindingSize)throw new Error('Full-detail visible meshlets exceed this device buffer limit. Choose a lower forest density.');
+      return count;
+    };
     this.terrain = new NaniteLiteRenderer(renderer,camera,terrainAsset,{sourceGeometry:world.geometry,
-      gameScene:true,gridSize:1,maxVisibleClusters:8192,onStats:receive('terrain')});
+      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,maxVisibleClusters:options.fullGeometry?fullCapacity(terrainAsset,1):8192,onStats:receive('terrain')});
     this.trees = new NaniteLiteRenderer(renderer,camera,treeAsset,{sourceGeometry:world.treeGeometry,
-      gameScene:true,gridSize:1,instanceData:world.treeInstances,maxVisibleClusters:32768,onStats:receive('trees')});
+      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,instanceData:world.treeInstances,maxVisibleClusters:options.fullGeometry?fullCapacity(treeAsset,world.treeInstances.length/4):32768,onStats:receive('trees')});
     this.pipelines=[this.terrain,this.trees];
     this.asset=terrainAsset;
     const scene=this.terrain.scene;

@@ -82,6 +82,8 @@ export class NaniteLiteRenderer {
     this.gameScene = Boolean(options.gameScene);
     this.sourceColors = options.sourceGeometry?.getAttribute('color');
 
+    this.fullGeometry = Boolean(options.fullGeometry);
+    this.softwareOnly = Boolean(options.softwareOnly);
     this.maxVisibleClusters = options.maxVisibleClusters ?? MAX_VISIBLE_CLUSTERS;
     this.gridSize = options.gridSize ?? INSTANCE_GRID_SIZE;
     this.spacing = options.spacing ?? INSTANCE_SPACING;
@@ -587,7 +589,7 @@ export class NaniteLiteRenderer {
           const lodLevel = uint(0).toVar();
           let selection = null;
 
-          for (let level = asset.hierarchy ? 0 : lods.length - 1; level > 0; level -= 1) {
+          for (let level = this.fullGeometry || asset.hierarchy ? 0 : lods.length - 1; level > 0; level -= 1) {
             const acceptable = groupLodBuffer.element(groupId.mul(lods.length).add(level)).x
               .mul(scale)
               .mul(pixelFactor)
@@ -839,7 +841,7 @@ export class NaniteLiteRenderer {
     // The indirect command expands each visible meshlet to 64 triangle slots.
     // This dummy buffer supplies a validated vertex range; positionNode ignores
     // its values and pulls actual geometry from storage buffers.
-    const maximumVertices = this.maxVisibleClusters * VERTICES_PER_MESHLET;
+    const maximumVertices = this.softwareOnly ? 3 : this.maxVisibleClusters * VERTICES_PER_MESHLET;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute(
       'position',

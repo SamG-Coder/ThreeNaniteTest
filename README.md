@@ -2,14 +2,12 @@
 
 A runnable GPU-driven geometry prototype for **Three.js 0.185.1** and WebGPU.
 
-The **Geometry** selector now offers four distinct paths:
+**Geometry** and **Rasterizer** are independent controls.
 
-| Mode | Geometry selection |
-| --- | --- |
-| Full resolution | Original indexed instances; bypasses meshlet compute |
-| Patch LOD | The previous implementation: six independent boundary-locked LODs per spatial patch |
-| Hierarchical LOD | Recursive cluster tree; GPU traversal selects parents or refines into children by projected pixel error |
-| Bitmask Raster · forest | Hierarchy-selected terrain and trees rasterized in compute using 32-triangle mask batches; simplified lighting |
+- Geometry: Full resolution, Patch LOD, or Hierarchical LOD.
+- Rasterizer: Hardware, or Bitmask compute (forest only).
+
+[Full resolution + Bitmask compute](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskVariant=original&geometry=full) selects original-detail meshlets with no LOD simplification. Frustum/cone culling still applies; pixel depth resolves visibility in compute. Switch only Rasterizer to compare with the original indexed hardware scene at the same camera. Materials differ, so this is a geometry comparison, not shading parity. Full-detail compute can be much slower and can exhaust the tile pool; it is not claimed to outperform hardware.
 
 The original Bitmask Raster shader is the default again: the depth-cache experiment ran roughly half as fast on the user's phone. Compare the [original](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskVariant=original) with the new [triangle-owned masks experiment](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskVariant=owned). The new path replaces coverage atomics with two mask words per triangle and defers depth interpolation until resolution, without an 8 KiB depth cache. Geometry and resolution stay the same; its device performance is not yet measured. The previous [depth-cache experiment](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskVariant=cached) remains available for diagnosis.
 

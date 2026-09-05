@@ -120,8 +120,9 @@ fn clear(@builtin(global_invocation_id) gid:vec3<u32>) {
 }
 @compute @workgroup_size(64)
 fn bin(@builtin(global_invocation_id) gid:vec3<u32>) {
-  if(gid.x>=aCount()+bCount()) {return;}
-  let id=globalId(gid.x);let t=makeTriangle(id);
+  let triangleIndex=gid.x+gid.y*params.settings.w*64u;
+  if(triangleIndex>=aCount()+bCount()) {return;}
+  let id=globalId(triangleIndex);let t=makeTriangle(id);
   if(t.info.y<3u) {return;}
   let lo=min(min(t.a.xy,t.b.xy),min(t.c.xy,t.d.xy));
   let hi=max(max(t.a.xy,t.b.xy),max(t.c.xy,t.d.xy));

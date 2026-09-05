@@ -23,8 +23,8 @@
           <option value="full">Full resolution</option>
           <option value="auto">Patch LOD</option>
           <option value="hierarchy" selected>Hierarchical LOD</option>
-          <option value="bitmask">Bitmask Raster · forest</option>
         </select></label>
+        <label class="mode-select"><span>Rasterizer</span><select id="rasterizer-mode" aria-label="Rasterizer"><option value="hardware">Hardware</option><option value="bitmask">Bitmask compute · forest</option></select></label>
         <label class="toggle"><input id="geometry-view" type="checkbox" /><span>Geometry view</span></label>
         <button id="panel-toggle" type="button" aria-controls="controls-panel" aria-expanded="true">Controls</button>
         <div class="live-readout"><span id="mode-description" role="status">Hierarchical LOD · shaded</span>
@@ -34,7 +34,7 @@
       <aside id="controls-panel" class="panel glass" aria-label="Geometry LOD controls">
         <section>
           <h2>Renderer</h2>
-          <p class="muted">FPS measures submitted-frame cadence. Compare Full resolution, Patch LOD and Hierarchical LOD. Hierarchical LOD refines a cluster hierarchy by pixel error. Bitmask Raster uses compute coverage and depth for forest geometry, with simplified lighting. Lake shading stays identical.</p>
+          <p class="muted">FPS measures submitted-frame cadence. Compare Full resolution, Patch LOD and Hierarchical LOD. Hierarchical LOD refines a cluster hierarchy by pixel error. Rasterizer is independent of geometry selection. Full resolution + Bitmask compute uses original-detail meshlets without LOD simplification, with simplified lighting. Lake shading stays identical.</p>
 
           <label class="field">
             <span>Geometry visualization</span>

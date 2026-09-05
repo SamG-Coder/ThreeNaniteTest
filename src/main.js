@@ -26,6 +26,7 @@ let controls;
 let pipeline = null;
 let activeSource = null;
 let activeMode = null;
+let activeRaster = 'hardware';
 let rebuildGeneration = 0;
 let gameControls = null;
 let activeWorld = null;
@@ -36,15 +37,11 @@ ui.onRenderModeChange = async () => {
   frameMeter.reset(); ui.clearFps();
   if (!activeSource || sceneBuilding) return;
   const mode = ui.elements.renderMode.value;
-  if (mode === 'full' || mode === activeMode) {
-    pipeline.setNaniteEnabled(mode !== 'full');
-    ui.syncRendererControls();
-    return;
-  }
   try {
     await rebuildScene(activeSource.geometry, activeSource.displayName, activeSource.world, true);
   } catch (error) {
     ui.elements.renderMode.value = activeMode;
+    ui.elements.rasterizerMode.value=activeRaster;
     ui.bindPipeline(pipeline);
     ui.hideLoading(); sceneBuilding = false;
     gameControls?.setEnabled(!controls.enabled);
@@ -124,8 +121,9 @@ async function geometryFromGlb(file) {
 }
 
 async function rebuildScene(geometry, displayName, world = null, preserveCamera = false) {
-  if(ui.elements.renderMode.value==='bitmask'&&!world?.forest)ui.elements.renderMode.value='hierarchy';
+  if(!world?.forest)ui.elements.rasterizerMode.value='hardware';
   const selectedMode=ui.elements.renderMode.value;
+  const selectedRaster=ui.elements.rasterizerMode.value;
   const mode = ui.elements.renderMode.value === 'auto' || ui.elements.renderMode.value === 'full' ? 'auto' : 'hierarchy';
   const sourceRecord = preserveCamera ? activeSource : { geometry, displayName, world, assets: new Map() };
   const wasWalking = gameControls?.enabled;
@@ -159,7 +157,7 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
       onProgress(title, detail) { ui.updateLoading(`Forest · ${title}`, detail); }
     });
     if (generation !== rebuildGeneration) { geometry.dispose(); world.treeGeometry.dispose(); return; }
-    nextPipeline = new ForestRenderer(renderer, camera, asset, treeAsset, world, stats => ui.updateStats(stats), {bitmask:selectedMode==='bitmask'});
+    nextPipeline = new ForestRenderer(renderer, camera, asset, treeAsset, world, stats => ui.updateStats(stats), {bitmask:selectedRaster==='bitmask',fullGeometry:selectedMode==='full'&&selectedRaster==='bitmask'});
     try { await nextPipeline.initBitmask(); } catch(error) { nextPipeline.dispose(); throw error; }
     sourceRecord.assets.set(mode, { asset, treeAsset });
   } else {
@@ -176,7 +174,7 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
 
   pipeline?.dispose();
   pipeline = nextPipeline;
-  activeMode = selectedMode==='bitmask'?'bitmask':mode;
+  activeMode = selectedMode;activeRaster=selectedRaster;
   if (!preserveCamera) {
     if (activeSource) {
       activeSource.geometry.dispose(); activeSource.world?.treeGeometry?.dispose();
@@ -233,7 +231,7 @@ async function initialise() {
   ui.updateLoading('Initialising WebGPU', 'Creating the Three.js WebGPU backend…');
   await renderer.init();
   renderer.backend.device.addEventListener('uncapturederror', event => {
-    if(activeMode==='bitmask'){sceneBuilding=true;ui.showFatalError(event.error);}
+    if(activeRaster==='bitmask'){sceneBuilding=true;ui.showFatalError(event.error);}
   });
   renderer.backend.device.lost.then(info => {
     sceneBuilding=true;
@@ -332,7 +330,9 @@ async function initialise() {
   };
 
   // Comparison links start in the same forest, camera and raster mode.
-  if(['bitmaskReference','bitmaskVariant'].some(key=>new URLSearchParams(location.search).has(key)))ui.elements.renderMode.value='bitmask';
+  if(['bitmaskReference','bitmaskVariant'].some(key=>new URLSearchParams(location.search).has(key)))ui.elements.rasterizerMode.value='bitmask';
+  const geometryMode=new URLSearchParams(location.search).get('geometry');
+  if(['full','auto','hierarchy'].includes(geometryMode))ui.elements.renderMode.value=geometryMode;
   await ui.onForest();
 }
 

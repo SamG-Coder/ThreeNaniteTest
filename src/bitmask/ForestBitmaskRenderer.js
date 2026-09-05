@@ -160,7 +160,7 @@ export class ForestBitmaskRenderer {
     u.set([this.width,this.height,this.tilesX,this.tilesX*this.tilesY],20);
     const [a,b]=this.forest.pipelines;
     u.set([a.maxVisibleClusters,b.maxVisibleClusters,a.asset.indices.length,b.asset.indices.length],24);
-    u.set([this.entryCapacity,{shaded:0,meshlets:1,lod:2,normals:3}[this.outputMode]??0,read?1:0,0],28);
+    u.set([this.entryCapacity,{shaded:0,meshlets:1,lod:2,normals:3}[this.outputMode]??0,read?1:0,Math.min(a.maxVisibleClusters+b.maxVisibleClusters,this.device.limits.maxComputeWorkgroupsPerDimension)],28);
     this.device.queue.writeBuffer(this.uniform,0,this.uniformBytes);
     const encoder=this.device.createCommandEncoder({label:'Forest bitmask frame'});
     encoder.copyBufferToBuffer(this.sharedBuffer(a.visibleCountAttribute),0,this.control,0,4);
@@ -169,7 +169,8 @@ export class ForestBitmaskRenderer {
       const pass=encoder.beginComputePass({label:`Forest bitmask ${name}`,timestampWrites:name==='bin'?this.probe.writes(2):name==='raster'?this.probe.writes(4):undefined});
       pass.setPipeline(this.pipelines[name]);pass.setBindGroup(0,this.groups[name]);
       if(name==='raster')pass.dispatchWorkgroups(this.tilesX,this.tilesY);
-      else pass.dispatchWorkgroups(name==='clear'?Math.ceil(Math.max(8,this.tilesX*this.tilesY)/64):a.maxVisibleClusters+b.maxVisibleClusters);
+      else if(name==='clear')pass.dispatchWorkgroups(Math.ceil(Math.max(8,this.tilesX*this.tilesY)/64));
+      else {const count=a.maxVisibleClusters+b.maxVisibleClusters;const width=Math.min(count,this.device.limits.maxComputeWorkgroupsPerDimension);pass.dispatchWorkgroups(width,Math.ceil(count/width));}
       pass.end();
     }
     if(read)encoder.copyBufferToBuffer(this.control,0,this.readback,0,32);

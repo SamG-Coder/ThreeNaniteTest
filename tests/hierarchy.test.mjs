@@ -90,3 +90,15 @@ test('both culling paths generate WGSL within the existing storage-buffer limit'
     pipeline.dispose();
   }
 });
+
+test('full-detail software selection omits LOD decisions and avoids expanded hardware dummy geometry',async()=>{
+  const renderer=new THREE.WebGPURenderer({canvas:{width:320,height:240,style:{},addEventListener(){},removeEventListener(){}}});renderer.hasFeature=()=>false;
+  const asset=await buildNaniteLiteAsset(geometry,{meshletsPerGroup:4});
+  const pipeline=new NaniteLiteRenderer(renderer,new THREE.PerspectiveCamera(),asset,{sourceGeometry:geometry,gridSize:1,maxVisibleClusters:asset.lods[0].clusterCount,fullGeometry:true,softwareOnly:true});
+  const builder=renderer.backend.createNodeBuilder(pipeline.computeCull,renderer);builder.build();
+  assert.equal(pipeline.naniteMesh.geometry.attributes.position.count,3);
+  assert.equal(pipeline.maxVisibleClusters,asset.lods[0].clusterCount);
+  assert.ok(!builder.uniforms.compute.some(u=>u.node===pipeline.lodThresholdUniform));
+  assert.equal(asset.lods[0].triangleCount,asset.sourceTriangleCount);
+  pipeline.dispose();
+});
