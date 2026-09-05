@@ -47,3 +47,23 @@ All source geometry is static and opaque. Controlled camera distance and scene b
 ## Further experiments
 
 Compare mask collection plus resolve against direct tile-owned exhaustive resolve and hardware rasterization with identical geometry and resolution. Measure GPU times, candidate density, memory and overflow separately. Only then investigate checkerboard shading, streamed pages and worker preprocessing. This design does not create multiple GPU queues or eliminate transfer bandwidth costs.
+
+## Forest integration: Bitmask Raster
+
+The main forest now offers **Geometry → Bitmask Raster · forest**. This uses the existing hierarchical LOD and meshlet culling front end for the same terrain/tree assets, instances, camera and error threshold. All selected terrain/tree triangles are rasterized in compute. The ordinary terrain/tree hardware draws are hidden in this mode; large triangles and near-plane crossings do not switch back to hardware rasterization.
+
+The forest path differs from the small isolated test:
+
+- Triangles are read directly from GPU-selected meshlets and GPU instance matrices; there is no per-frame CPU triangle readback or expanded projected-triangle buffer.
+- A homogeneous near-plane clip produces a triangle or quadrilateral. Pixel coverage uses a fan with the top-left edge rule. Far-depth samples are rejected and offscreen bounding boxes are clamped to the viewport.
+- A global linked-list pool bins candidates into 8×8 tiles. It reserves up to 8,388,608 entries (64 MiB), limited by the device's storage-binding capacity.
+- Each tile workgroup consumes its list in **32-triangle batches**. Triangle invocations atomically OR bits into workgroup-local masks; after a workgroup barrier, pixel owners resolve those masks. Each pixel retains its nearest depth/ID/color across every batch. Dense tiles have no 32- or 128-triangle hard cutoff.
+- If the list pool is exhausted, marked tiles scan all selected triangles in software, in the same batches. This preserves raster-stage coverage but can be extremely slow. Counters report scan tiles. Existing upstream meshlet visible-list overflow is separate and still reports dropped geometry explicitly.
+- Full viewport resolution is retained. Outputs are separate r32float depth, r32uint ID and rgba16float color textures, totaling 16 bytes/pixel. There is no full-screen mask buffer in this path; the 64 masks per tile live in workgroup memory.
+- Shading uses per-triangle averaged source vertex colors/normals, simple hemisphere/directional lighting and exponential fog. It does not reproduce Three.js MeshStandard shading exactly. Geometry/LOD/normals visualization remains available.
+- Three.js renders the existing lake and sky, then a fullscreen depth-tested composite places the computed forest color/depth over them. Hardware handles presentation and water, not terrain/tree triangle visibility.
+- One submitted software frame is allowed in flight. Queue completion is observed asynchronously; JS/input does not synchronously wait. Skipped submissions are excluded from the frame-cadence counter. Statistics readback remains asynchronous.
+
+The bridge uses the pinned Three.js 0.185.1 backend's initialized StorageBufferAttributes and StorageTextures. Changes to Three's backend internals will require revalidation. The bin/raster kernels use 11 storage-buffer bindings and the raster kernel writes 3 storage textures, within the app's requested limits. Raster workgroup memory is below 16 KiB.
+
+Additional tests cover near-plane intersections (including exact endpoints), batch winner persistence beyond 128 candidates, WGSL parsing/emission, disabled hardware geometry draws and submission pacing. Physical-device rendering, water depth composition, queue behavior and performance remain unverified in the hosted workspace. This is an experiment, not a performance claim or a streaming implementation.

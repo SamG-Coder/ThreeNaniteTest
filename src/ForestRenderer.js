@@ -1,11 +1,12 @@
 import * as THREE from 'three/webgpu';
 import { positionLocal, time, sin, vec3, float } from 'three/tsl';
+import { ForestBitmaskRenderer } from './bitmask/ForestBitmaskRenderer.js';
 import { NaniteLiteRenderer } from './NaniteLiteRenderer.js';
 
 // Each asset has its own compute/indirect buffers. Both draws share one scene,
 // camera and presentation pass; the original indexed instances are the baseline.
 export class ForestRenderer {
-  constructor(renderer, camera, terrainAsset, treeAsset, world, onStats) {
+  constructor(renderer, camera, terrainAsset, treeAsset, world, onStats, options = {}) {
     this.samples = new Map(); this.enabled = true; this.onStats = onStats;
     const receive = key => stats => {
       if (stats.naniteEnabled !== this.enabled) return;
@@ -13,7 +14,7 @@ export class ForestRenderer {
       if(this.samples.size!==2) return;
       const values=[...this.samples.values()];
       const sum=key=>values.reduce((total,s)=>total+(s[key]??0),0);
-      this.onStats({naniteEnabled:this.enabled,sourceTriangles:sum('sourceTriangles'),
+      this.onStats({bitmask:this.enabled?this.bitmask?.metrics:null,naniteEnabled:this.enabled,sourceTriangles:sum('sourceTriangles'),
         sourceSceneTriangles:sum('sourceSceneTriangles'),submittedTriangles:sum('submittedTriangles'),
         visibleMeshlets:sum('visibleMeshlets'),capacity:sum('capacity'),instances:sum('instances'),
         groups:sum('groups'),lockedVertices:sum('lockedVertices'),assetBytes:sum('assetBytes'),
@@ -40,20 +41,32 @@ export class ForestRenderer {
     this.water.position.set(0,.1,-9); scene.add(this.water);
     // A small physical roughness stops the lake becoming a mirror without IBL.
     waterMaterial.roughnessNode=float(.23);
+    if(options.bitmask)this.bitmask=new ForestBitmaskRenderer(this);
   }
-  render(now) { this.trees.render(now,true); this.terrain.render(now); }
+  async initBitmask() { if(this.bitmask)await this.bitmask.init(); }
+  render(now) {
+    if(this.bitmask&&this.enabled&&this.bitmask.busy)return false;
+    this.trees.render(now,true);
+    if(this.bitmask&&this.enabled){
+      this.terrain.render(now,true);
+      for(const p of this.pipelines){p.naniteMesh.visible=false;p.baselineMesh.visible=false;}
+      this.bitmask.render(now);
+    }else this.terrain.render(now);
+  }
   setNaniteEnabled(value) {
     this.enabled=Boolean(value); this.samples.clear();
+    if(this.bitmask){this.bitmask.metrics=null;this.bitmask.generation++;}
     for(const p of this.pipelines) p.setNaniteEnabled(value);
   }
-  setOutputMode(value) { for(const p of this.pipelines) p.setOutputMode(value); }
+  setOutputMode(value) { if(this.bitmask)this.bitmask.outputMode=value; for(const p of this.pipelines) p.setOutputMode(value); }
   setLodThreshold(value) { for(const p of this.pipelines) p.setLodThreshold(value); }
   setConeEnabled(value) { for(const p of this.pipelines) p.setConeEnabled(value); }
   setOcclusionEnabled() { for(const p of this.pipelines) p.setOcclusionEnabled(false); }
   setOccludersVisible() { for(const p of this.pipelines) p.setOccludersVisible(false); }
   invalidateOcclusionHistory() { for(const p of this.pipelines) p.invalidateOcclusionHistory(); }
-  resize() { for(const p of this.pipelines) p.resize(); }
+  resize() { for(const p of this.pipelines) p.resize(); this.bitmask?.resize(); }
   dispose() {
+    this.bitmask?.dispose();
     this.samples.clear(); this.water.geometry.dispose(); this.water.material.dispose();
     for(const p of this.pipelines) p.dispose();
   }

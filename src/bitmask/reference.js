@@ -44,3 +44,25 @@ export function resolveMask(triangles, ids, pixel) {
   const mask = collectMask(triangles, ids, pixel);
   return resolveReference(triangles, ids.filter((_, slot) => ((mask[slot >>> 5] >>> (slot & 31)) & 1) !== 0), pixel);
 }
+
+// Forest path retains the winner between 32-candidate batches.
+export function resolveBatches(triangles, ids, pixel) {
+  let best={depth:1,id:EMPTY_ID};
+  for(let offset=0;offset<ids.length;offset+=32) {
+    const next=resolveMask(triangles,ids.slice(offset,offset+32),pixel);
+    if(next.depth<best.depth||(next.depth===best.depth&&next.id<best.id))best=next;
+  }
+  return best;
+}
+export function clipNearPlane(points) {
+  const clipped=[];
+  for(let i=0;i<3;i++) {
+    const a=points[i],b=points[(i+1)%3];
+    if(a[2]>=0)clipped.push([...a]);
+    if((a[2]>0&&b[2]<0)||(a[2]<0&&b[2]>0)) {
+      const t=a[2]/(a[2]-b[2]);
+      const p=a.map((v,j)=>v+(b[j]-v)*t);p[2]=0;clipped.push(p);
+    }
+  }
+  return clipped;
+}

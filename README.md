@@ -2,15 +2,16 @@
 
 A runnable GPU-driven geometry prototype for **Three.js 0.185.1** and WebGPU.
 
-The **Geometry** selector now offers three distinct paths:
+The **Geometry** selector now offers four distinct paths:
 
 | Mode | Geometry selection |
 | --- | --- |
 | Full resolution | Original indexed instances; bypasses meshlet compute |
 | Patch LOD | The previous implementation: six independent boundary-locked LODs per spatial patch |
-| Hierarchical LOD | New recursive cluster tree; GPU traversal selects parents or refines into children by projected pixel error |
+| Hierarchical LOD | Recursive cluster tree; GPU traversal selects parents or refines into children by projected pixel error |
+| Bitmask Raster · forest | Hierarchy-selected terrain and trees rasterized in compute using 32-triangle mask batches; simplified lighting |
 
-Hierarchical LOD is the default. This is a browser experiment, not Epic's Nanite implementation. Both optimized modes include:
+Hierarchical LOD is the default. This is a browser experiment, not Epic's Nanite implementation. Patch LOD and Hierarchical LOD include:
 
 - Patch LOD: spatial groups of up to 64 leaf meshlets in the terrain scene (16 in the mesh stress test)
 - Hierarchical LOD: eight-meshlet leaves, recursively merged/simplified/reclustered parents, and stackless GPU traversal
@@ -29,7 +30,7 @@ Hierarchical LOD is the default. This is a browser experiment, not Epic's Nanite
 
 The default map is **Emerald Basin**, a natural forest stress test with a mountain lake, granite outcrops and detailed broadleaf trees. The map contains no buildings. Trees contain modeled branches and individual opaque 3D leaves, rather than solid canopy blobs or alpha cards.
 
-The scene stores one high-detail tree asset and places it 96, 256 or 512 times with deterministic positions, rotations and scales. All three modes use identical source geometry and instance placement. Full resolution draws the original indexed instances; Patch LOD and Hierarchical LOD use their respective selection algorithms and meshlet culling. Terrain and forest use separate indirect draws in one scene and one presentation pass. Geometry readouts sum both batches; FPS includes lake shading too.
+The scene stores one high-detail tree asset and places it 96, 256 or 512 times with deterministic positions, rotations and scales. All forest modes use identical source geometry and instance placement. Full resolution draws the original indexed instances; Patch LOD and Hierarchical LOD use their respective selection algorithms and meshlet culling. Terrain and forest use separate indirect draws in one scene and one presentation pass. Geometry readouts sum both batches; FPS includes lake shading too.
 
 The original mesh stress test and mountain terrain sample remain available in Controls.
 
@@ -44,6 +45,12 @@ This is a resident binary hierarchy, not a repartitioned cluster DAG. It has no 
 Regression tests check exact leaf coverage/winding, parent boundary matching, bounds/error monotonicity, complete non-overlapping cuts, response to viewport/FOV/distance/error, and offline WGSL generation within the 12-storage-buffer limit. Offline generation does not validate shaders on a physical adapter.
 
 Design references: [meshoptimizer cluster hierarchy example](https://github.com/zeux/meshoptimizer/blob/master/demo/clusterlod.h) and [Epic's Nanite documentation](https://dev.epicgames.com/documentation/unreal-engine/nanite-virtualized-geometry-in-unreal-engine). This implementation uses a simpler nested tree.
+
+## Bitmask Raster in the forest
+
+Choose **Geometry → Bitmask Raster · forest** to try the compute rasterizer on Emerald Basin. It uses the current hierarchical selection and all selected terrain/tree triangles, with 32-triangle mask batches and separate depth/ID/color textures. It retains camera position, mobile controls and the existing lake. Terrain/tree hardware draws are disabled; Three.js handles the depth-tested fullscreen composite and water.
+
+Dense tiles process additional batches. Exhausting the 64 MiB candidate pool triggers an explicitly reported exhaustive software scan, which can be very slow. The renderer keeps only one frame in flight and counts actual frame submissions in its FPS meter. It uses simplified per-triangle lighting, not exact MeshStandard material parity. Full viewport resolution is retained; no device FPS improvement is claimed. See the [forest integration specification](docs/BITMASK_RASTER_TEST.md#forest-integration-bitmask-raster).
 
 ## Bitmask Raster Test
 

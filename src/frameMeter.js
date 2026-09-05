@@ -1,4 +1,4 @@
-// Measures animation-frame cadence, not GPU execution time. Ignore hidden tabs
+// Measures submitted-frame cadence, not GPU execution time. Ignore hidden tabs
 // and restart the sample after renderer switches and asset builds.
 export class FrameMeter {
   constructor(onSample) { this.onSample = onSample; this.reset(); }

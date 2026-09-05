@@ -161,6 +161,8 @@ export class DemoUI {
   }
 
   setGameScene(enabled, forest = false) {
+    const bitmaskOption=this.elements.renderMode.querySelector('[value="bitmask"]');
+    bitmaskOption.disabled=!forest;bitmaskOption.hidden=!forest;
     this.elements.occlusionEnabled.closest('label').hidden = forest;
     if (forest) this.elements.occlusionEnabled.checked = false;
     this.elements.gameHud.hidden = !enabled;
@@ -190,7 +192,7 @@ export class DemoUI {
     this.pipeline?.setOutputMode(mode);
     const label = visualizing ? this.elements.outputMode.selectedOptions[0].text : 'shaded';
     this.elements.modeDescription.textContent = enabled
-      ? `${this.elements.renderMode.value === 'hierarchy' ? 'Hierarchical LOD' : 'Patch LOD'} · ${label}` : 'Full resolution';
+      ? `${this.elements.renderMode.value === 'bitmask' ? 'Bitmask Raster' : this.elements.renderMode.value === 'hierarchy' ? 'Hierarchical LOD' : 'Patch LOD'} · ${label}` : 'Full resolution';
     this.elements.lodBars.hidden = !enabled;
   }
 
@@ -258,6 +260,7 @@ export class DemoUI {
     this.elements.geometryReadout.textContent = stats.overflowed
       ? 'Meshlet capacity exceeded · some geometry was dropped'
       : `${submitted} submitted / ${source} source · ${reduction.toFixed(0)}% fewer`;
+    if(stats.bitmask)this.elements.geometryReadout.textContent+=` · ${compactFormatter.format(stats.bitmask.batches)} mask batches · ${stats.bitmask.overflowTiles} scan tiles`;
     this.elements.geometryReadout.classList.toggle('capacity-error', Boolean(stats.overflowed));
     this.elements.geometryReadout.title = 'Meshlet submission counts include padded meshlet triangles. Fewer submitted triangles does not guarantee higher FPS.';
     this.elements.sourceTriangles.textContent = numberFormatter.format(
@@ -283,10 +286,10 @@ export class DemoUI {
     if (stats.naniteEnabled === false) this.elements.visibleMeshlets.textContent = '—';
     this.elements.capacity.title = `${numberFormatter.format(stats.visibleMeshlets)} / ${numberFormatter.format(stats.capacity)} meshlets`; 
 
-    this.elements.overflowWarning.classList.toggle(
-      'hidden',
-      !stats.overflowed
-    );
+    this.elements.overflowWarning.textContent=stats.overflowed
+      ? 'Meshlet capacity exceeded. Some geometry was dropped before rasterization.'
+      : `Raster pool exhausted in ${stats.bitmask?.overflowTiles??0} tiles. Those tiles scan all selected triangles in software; this can be very slow.`;
+    this.elements.overflowWarning.classList.toggle('hidden',!stats.overflowed&&!stats.bitmask?.overflowTiles);
 
     const maximum = Math.max(1, ...stats.lodCounts);
     stats.lodCounts.forEach((count, index) => {

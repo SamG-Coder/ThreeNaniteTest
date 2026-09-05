@@ -23,17 +23,18 @@
           <option value="full">Full resolution</option>
           <option value="auto">Patch LOD</option>
           <option value="hierarchy" selected>Hierarchical LOD</option>
+          <option value="bitmask">Bitmask Raster · forest</option>
         </select></label>
         <label class="toggle"><input id="geometry-view" type="checkbox" /><span>Geometry view</span></label>
         <button id="panel-toggle" type="button" aria-controls="controls-panel" aria-expanded="true">Controls</button>
         <div class="live-readout"><span id="mode-description" role="status">Hierarchical LOD · shaded</span>
-          <span class="fps-readout" title="Animation-frame cadence; not GPU execution time"><strong id="fps-value">—</strong> FPS <span id="frame-ms">— ms</span></span><span id="geometry-readout" class="geometry-readout">Preparing geometry…</span></div>
+          <span class="fps-readout" title="Submitted-frame cadence; not GPU execution time"><strong id="fps-value">—</strong> FPS <span id="frame-ms">— ms</span></span><span id="geometry-readout" class="geometry-readout">Preparing geometry…</span></div>
       </nav>
 
       <aside id="controls-panel" class="panel glass" aria-label="Geometry LOD controls">
         <section>
           <h2>Renderer</h2>
-          <p class="muted">FPS measures frame cadence. Compare Full resolution, Patch LOD and Hierarchical LOD. Hierarchical LOD refines a cluster hierarchy by pixel error. Lake shading stays identical.</p>
+          <p class="muted">FPS measures submitted-frame cadence. Compare Full resolution, Patch LOD and Hierarchical LOD. Hierarchical LOD refines a cluster hierarchy by pixel error. Bitmask Raster uses compute coverage and depth for forest geometry, with simplified lighting. Lake shading stays identical.</p>
 
           <label class="field">
             <span>Geometry visualization</span>

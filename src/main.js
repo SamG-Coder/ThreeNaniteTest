@@ -124,6 +124,8 @@ async function geometryFromGlb(file) {
 }
 
 async function rebuildScene(geometry, displayName, world = null, preserveCamera = false) {
+  if(ui.elements.renderMode.value==='bitmask'&&!world?.forest)ui.elements.renderMode.value='hierarchy';
+  const selectedMode=ui.elements.renderMode.value;
   const mode = ui.elements.renderMode.value === 'auto' || ui.elements.renderMode.value === 'full' ? 'auto' : 'hierarchy';
   const sourceRecord = preserveCamera ? activeSource : { geometry, displayName, world, assets: new Map() };
   const wasWalking = gameControls?.enabled;
@@ -157,7 +159,8 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
       onProgress(title, detail) { ui.updateLoading(`Forest · ${title}`, detail); }
     });
     if (generation !== rebuildGeneration) { geometry.dispose(); world.treeGeometry.dispose(); return; }
-    nextPipeline = new ForestRenderer(renderer, camera, asset, treeAsset, world, stats => ui.updateStats(stats));
+    nextPipeline = new ForestRenderer(renderer, camera, asset, treeAsset, world, stats => ui.updateStats(stats), {bitmask:selectedMode==='bitmask'});
+    try { await nextPipeline.initBitmask(); } catch(error) { nextPipeline.dispose(); throw error; }
     sourceRecord.assets.set(mode, { asset, treeAsset });
   } else {
     sourceRecord.assets.set(mode, { asset });
@@ -173,7 +176,7 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
 
   pipeline?.dispose();
   pipeline = nextPipeline;
-  activeMode = mode;
+  activeMode = selectedMode==='bitmask'?'bitmask':mode;
   if (!preserveCamera) {
     if (activeSource) {
       activeSource.geometry.dispose(); activeSource.world?.treeGeometry?.dispose();
@@ -229,6 +232,13 @@ async function initialise() {
 
   ui.updateLoading('Initialising WebGPU', 'Creating the Three.js WebGPU backend…');
   await renderer.init();
+  renderer.backend.device.addEventListener('uncapturederror', event => {
+    if(activeMode==='bitmask'){sceneBuilding=true;ui.showFatalError(event.error);}
+  });
+  renderer.backend.device.lost.then(info => {
+    sceneBuilding=true;
+    ui.showFatalError(new Error(`WebGPU device lost: ${info.message}. Reload to choose another mode.`));
+  });
 
   camera = new THREE.PerspectiveCamera(
     50,
@@ -257,8 +267,12 @@ async function initialise() {
     lastFrameAt = time;
     if (controls.enabled) controls.update();
     if (!sceneBuilding) gameControls?.update(dt);
-    if (!sceneBuilding) pipeline?.render(time);
-    frameMeter.tick(time, Boolean(pipeline) && !sceneBuilding && !document.hidden);
+    let submitted;
+    try { if (!sceneBuilding) submitted=pipeline?.render(time); }
+    catch(error) { sceneBuilding=true; ui.showFatalError(error); }
+    const active=Boolean(pipeline)&&!sceneBuilding&&!document.hidden;
+    if(!active)frameMeter.tick(time,false);
+    else if(submitted!==false)frameMeter.tick(time,true);
   });
 
   window.addEventListener('resize', () => {
