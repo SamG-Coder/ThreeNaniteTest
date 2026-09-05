@@ -14,13 +14,15 @@ This is not Unreal Engine Nanite. It implements a deliberately smaller and under
 - GPU-compacted visible meshlet list
 - GPU-generated indirect draw arguments
 - Storage-buffer vertex pulling
-- One hardware-rasterized draw for the Nanite Lite geometry
+- One hardware-rasterized draw per Nanite Lite asset batch (terrain and trees in the forest)
 - Live GPU readback statistics and LOD distribution
 - Runtime `.glb` import for the largest static mesh
 
-The project starts in **Highland Ruins**, a walkable mountain valley with a trail, pine trees, boulders and a ruined stone courtyard. Terrain and props are merged into one colored static source mesh and processed by the grouped Nanite Lite pipeline. Nanite off draws that same full-resolution geometry with the same colors, camera, lighting and placement.
+The default map is **Emerald Basin**, a natural forest stress test with a mountain lake, granite outcrops and detailed broadleaf trees. The map contains no buildings. Trees contain modeled branches and individual opaque 3D leaves, rather than solid canopy blobs or alpha cards.
 
-The original torus-knot stress test is available under **Controls → Mesh stress test**. It uses 196 instances on desktop and 49 on coarse-pointer devices.
+The scene stores one high-detail tree asset and places it 96, 256 or 512 times with deterministic positions, rotations and scales. These are full-resolution indexed instances when Nanite is off; Nanite on uses the same source asset with GPU group LOD selection and meshlet culling. Terrain and forest use separate indirect draws in one scene and one presentation pass. Geometry readouts sum both batches; FPS includes lake shading too.
+
+The original mesh stress test and mountain terrain sample remain available in Controls.
 
 ## GitHub Pages
 
@@ -29,26 +31,21 @@ In repository **Settings → Pages → Build and deployment**, choose **GitHub A
 The project URL is https://samg-coder.github.io/ThreeNaniteTest/ after the deployment succeeds.
 Relative asset paths support the repository subdirectory and local preview.
 
-## Playable terrain and FPS
+## Forest stress presets and controls
 
-- Desktop: click the scene to capture the mouse; **WASD / arrow keys** move, **Shift** sprints, **Space** jumps, and **Escape** releases the mouse to reach the interface.
-- Mobile: use the left joystick to move, swipe the scene to look, and tap **Jump**.
-- Walking follows the terrain height with gravity and simple obstacle collision for trees, rocks and ruin walls. Collision is approximate; this is an explorable rendering sample, with no combat or objectives.
-- Switch **Walking / Orbit camera** in Controls to inspect the whole landscape. **Reset position** restores the spawn or overview.
-- Geometry density is selectable: Compact uses a 256×256 terrain grid (~181K total triangles), High uses 512×512 (~575K), and Ultra uses 1024×1024 (~2.15M). Desktop defaults to Ultra; coarse-pointer devices default to High. Choose a density in Controls, then press Highland ruins to rebuild. Identical prop vertices are welded, and terrain uses 64 leaf meshlets per group. Preprocessing remaps each group into local vertex arrays before simplification, then restores global indices to preserve shared boundaries and vertex colors. Props use the same deterministic placement on both. The scene is built once per load; switching Nanite does not regenerate it.
-- The always-visible geometry readout compares padded submitted triangles with source triangles and shows submission reduction. Reduction does not guarantee higher FPS: compute overhead, fill rate and display refresh limits still matter.
-- **FPS** and average **ms/frame** stay visible beside the render-mode label and update twice per second. They measure animation-frame cadence, not isolated GPU time. Hidden tabs and asset-building periods are excluded; switching Nanite resets the sample. Display refresh rate can cap FPS.
-- Trees, rocks, ruin stonework and terrain all take part in the Nanite comparison. There is no separate low-detail substitute when Nanite is disabled.
-
-## Comparison and mobile
-
-- **Nanite** toggles between the grouped meshlet pipeline and full-resolution indexed instancing. Both use the same source geometry, transforms, lighting, camera and procedural material. Disabling Nanite bypasses its compute passes and HZB work.
-- **Nanite view** toggles the chosen meshlet, LOD or normal visualization. Turn it off to return to shaded rendering. Visualization and Nanite-only controls are disabled in full-resolution mode.
-- **Controls** opens or closes the settings drawer. It starts closed on small screens; Escape closes it for keyboard users.
-- Touch: one finger orbits; pinch zooms; two fingers pan.
-- The game scene uses one identity instance. Coarse-pointer devices use an 8,192-meshlet capacity and pixel ratio capped at 1; desktop uses 16,384 meshlets and a pixel ratio capped at 2. The optional mesh stress test uses 49 or 196 instances respectively. Full-resolution mode can be slower.
-- Mobile layout does not remove the WebGPU hardware requirement: the adapter must support 12 storage buffers per shader stage. Unsupported devices show an explanation.
-- Full-resolution statistics show source triangles submitted for all instances. Nanite statistics count padded 64-triangle meshlet slots; these are submission counts, not exact visible triangle or performance measurements.
+- **Build forest** regenerates the selected 96-, 256- or 512-tree preset. Desktop defaults to 512 trees and coarse-pointer devices to 256. Presets share nested tree placement, and geometry is never rebuilt by the Nanite on/off toggle.
+- The tree prototype contains roughly 108K triangles. Depending on the preset, the forest represents roughly 11–56 million source triangles including terrain and rocks. Exact counts appear in the interface. Instancing avoids storing dozens of millions of unique vertices.
+- Desktop: click the scene for mouse look; WASD/arrow keys move, Shift sprints, Space jumps, Escape releases the mouse.
+- Mobile: left joystick moves, swiping the scene looks around, and Jump jumps. Walking follows the ground and uses approximate collision against trunks, rocks and the lake boundary.
+- Walking / Orbit camera switches navigation. Reset position returns to the spawn or overview.
+- Nanite view shows meshlet clusters, LODs or normals for the terrain and trees together.
+- FPS and mean ms/frame measure animation-frame cadence, not isolated GPU execution time. Hidden tabs and asset-building periods are excluded; changing Nanite resets the sample. Display refresh rate can cap FPS.
+- The geometry readout compares padded submitted meshlet triangles with source triangles. Capacity overflow is shown explicitly. A lower triangle count does not guarantee higher FPS; culling and compute have overhead.
+- The lake uses the same opaque animated water material in both modes. It is outside the Nanite asset statistics and is not used to manufacture a geometry speedup. It has no planar reflections or refraction.
+- Experimental previous-frame HZB is disabled in the multi-asset forest map. Frustum culling, normal-cone culling and per-group LOD selection remain active.
+- The forest reserves 32,768 visible tree meshlets plus 8,192 terrain meshlets. The fixed dummy vertex buffers consume approximately 90 MiB combined. GPU assets and baseline buffers require additional memory.
+- Terrain sample uses the selected density for 256², 512² or 1024² grid subdivisions. Mesh stress test retains its original 49/196-instance grid.
+- WebGPU and 12 storage buffers per shader stage are still required. This is a procedural rendering stress test, not a complete game or a claim of photorealistic rendering.
 
 ## Run it
 
@@ -97,8 +94,10 @@ npm test
 src/
   partitionMeshlets.js        Spatial leaf grouping and conservative boundary locks
   main.js                    Application bootstrap, camera and GLB loading
-  gameScene.js               Terrain, forest, ruins, colors and collision layout
+  gameScene.js               Terrain, forest, natural scenery, colors and collision layout
   gameControls.js            First-person movement, mouse look and touch controls
+  forestScene.js             Natural map, detailed leaves/branches and forest placement
+  ForestRenderer.js          Shared scene with terrain and forest render batches
   frameMeter.js              FPS and frame interval sampling
   buildNaniteLiteAsset.js    Mesh simplification, meshlet generation and packing
   NaniteLiteRenderer.js      GPU buffers, compute culling, HZB and indirect draw

@@ -86,27 +86,6 @@ export function createGameScene(mobile = false, density = mobile ? 'high' : 'ult
     }
     obstacles.push({x,z,radius:.38});
   }
-  // Broken stone gateway and paired colonnades frame the walkable courtyard.
-  function block(x,y,z,w,h,d) {
-    const g = new THREE.BoxGeometry(w,h,d,3,3,3);
-    g.translate(x,y+h/2,z); paint(g,0xb0a58d,.055);
-  }
-  for (const x of [-6,6]) for (const z of [-19,-27,-35]) {
-    const h = z===-27 ? 5.5 : 3.8 + random() * 1.8;
-    block(x,1.8,z,1.65,.45,1.65);
-    const column = new THREE.CylinderGeometry(.55,.7,h,16,10);
-    column.translate(x,2.25+h/2,z); paint(column,0xb0a58d,.08);
-    block(x,2.25+h,z,1.8,.45,1.8);
-    obstacles.push({x,z,radius:1});
-  }
-  for (const x of [-3.8,3.8]) {
-    block(x,1.8,-14,1.8,6,2.2); obstacles.push({x,z:-14,radius:1.2});
-  }
-  block(0,7.8,-14,9.4,1.25,2.2);
-  for (const x of [-9,9]) {
-    block(x,1.8,-31,1.2,2.6,15);
-    obstacles.push({x,z:-31,halfX:.6,halfZ:7.5});
-  }
   const weldedParts = parts.map(part => {
     if (part === ground) return part;
     const welded = mergeVertices(part); part.dispose(); return welded;

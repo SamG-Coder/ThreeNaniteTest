@@ -13,6 +13,8 @@ import { DemoUI } from './ui.js';
 import { createGameScene } from './gameScene.js';
 import { GameControls } from './gameControls.js';
 import { FrameMeter } from './frameMeter.js';
+import { createForestScene } from './forestScene.js';
+import { ForestRenderer } from './ForestRenderer.js';
 
 const ui = new DemoUI();
 const canvas = document.querySelector('#viewport');
@@ -122,13 +124,25 @@ async function rebuildScene(geometry, displayName, world = null) {
 
   if (generation !== rebuildGeneration) { geometry.dispose(); return; }
 
-  const nextPipeline = new NaniteLiteRenderer(renderer, camera, asset, {
+  let nextPipeline;
+  if (world?.forest) {
+    const treeAsset = await buildNaniteLiteAsset(world.treeGeometry, {
+      meshletsPerGroup: 64,
+      onProgress(title, detail) { ui.updateLoading(`Forest · ${title}`, detail); }
+    });
+    if (generation !== rebuildGeneration) { geometry.dispose(); world.treeGeometry.dispose(); return; }
+    nextPipeline = new ForestRenderer(renderer, camera, asset, treeAsset, world, stats => ui.updateStats(stats));
+    world.treeGeometry.dispose();
+  } else {
+    nextPipeline = new NaniteLiteRenderer(renderer, camera, asset, {
     sourceGeometry: geometry,
     gridSize: world ? 1 : mobileProfile ? 7 : 14,
     gameScene: Boolean(world),
     maxVisibleClusters: mobileProfile ? 8192 : 16384,
     onStats: (stats) => ui.updateStats(stats)
   });
+
+  }
 
   pipeline?.dispose();
   pipeline = nextPipeline;
@@ -140,7 +154,7 @@ async function rebuildScene(geometry, displayName, world = null) {
     gameControls = new GameControls(camera, canvas, world, ui.gameElements);
     gameControls.setEnabled(true);
   }
-  ui.setGameScene(Boolean(world));
+  ui.setGameScene(Boolean(world), Boolean(world?.forest));
   geometry.dispose();
   ui.createLodBars(asset.lods.length);
   ui.bindPipeline(pipeline);
@@ -230,12 +244,21 @@ async function initialise() {
     controls.enabled = !walking;
     resetCamera();
   };
+  ui.onForest = async () => {
+    try {
+      ui.showLoading('Preparing forest', 'Building detailed branches, foliage and terrain…');
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const world = createForestScene(ui.elements.geometryDensity.value);
+      const triangles = world.geometry.index.count / 3 + world.treeGeometry.index.count / 3 * world.treeInstances.length / 4;
+      await rebuildScene(world.geometry, `Emerald Basin · ${world.treeInstances.length / 4} trees · ${(triangles/1e6).toFixed(1)}M source triangles`, world);
+    } catch (error) { ui.showFatalError(error); }
+  };
   ui.onTerrain = async () => {
     try {
       ui.showLoading('Preparing landscape', 'Generating the selected geometry density…');
       await new Promise(resolve => requestAnimationFrame(resolve));
       const world = createGameScene(mobileProfile, ui.elements.geometryDensity.value);
-      await rebuildScene(world.geometry, 'Highland ruins · terrain, forest and stonework', world);
+      await rebuildScene(world.geometry, 'Mountain terrain sample', world);
     } catch (error) { ui.showFatalError(error); }
   };
   ui.onRestoreDefault = async () => {
@@ -261,7 +284,7 @@ async function initialise() {
     }
   };
 
-  await ui.onTerrain();
+  await ui.onForest();
 }
 
 initialise().catch((error) => {

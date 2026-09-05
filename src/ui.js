@@ -24,6 +24,7 @@ export class DemoUI {
       geometryReadout: document.querySelector('#geometry-readout'),
       frameMs: document.querySelector('#frame-ms'),
       terrainSample: document.querySelector('#terrain-sample'),
+      forestSample: document.querySelector('#forest-sample'),
       navigationMode: document.querySelector('#navigation-mode'),
       gameHud: document.querySelector('#game-hud'),
       outputMode: document.querySelector('#output-mode'),
@@ -73,6 +74,7 @@ export class DemoUI {
   }
 
   bindEvents() {
+    this.elements.forestSample.addEventListener('click', () => this.onForest?.());
     this.elements.terrainSample.addEventListener('click', () => this.onTerrain?.());
     this.elements.navigationMode.addEventListener('click', () => {
       const walking = this.elements.navigationMode.getAttribute('aria-pressed') !== 'true';
@@ -159,7 +161,9 @@ export class DemoUI {
     this.elements.frameMs.textContent = '— ms';
   }
 
-  setGameScene(enabled) {
+  setGameScene(enabled, forest = false) {
+    this.elements.occlusionEnabled.closest('label').hidden = forest;
+    if (forest) this.elements.occlusionEnabled.checked = false;
     this.elements.gameHud.hidden = !enabled;
     this.elements.navigationMode.hidden = !enabled;
     this.elements.navigationMode.setAttribute('aria-pressed', 'true');

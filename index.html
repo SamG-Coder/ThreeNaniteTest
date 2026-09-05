@@ -13,7 +13,7 @@
       <header class="topbar glass">
         <div>
           <div class="eyebrow">THREE.JS · WEBGPU · GPU DRIVEN</div>
-          <h1>Highland Ruins</h1>
+          <h1>Emerald Basin</h1>
         </div>
         <div id="status-pill" class="status-pill">Initialising WebGPU</div>
       </header>
@@ -29,7 +29,7 @@
       <aside id="controls-panel" class="panel glass" aria-label="Nanite Lite controls">
         <section>
           <h2>Renderer</h2>
-          <p class="muted">Nanite off renders the full-resolution source. Nanite view shows the selected visualization.</p>
+          <p class="muted">FPS measures frame cadence. Lake shading stays identical in both modes. Nanite off renders the full-resolution source. Nanite view shows the selected visualization.</p>
 
           <label class="field">
             <span>Nanite visualization</span>
@@ -65,17 +65,18 @@
           <h2>Scene</h2>
           <label class="field"><span>Geometry density</span>
             <select id="geometry-density">
-              <option value="compact">Compact · ~181K triangles</option>
-              <option value="high">High · ~575K triangles</option>
-              <option value="ultra">Ultra · ~2.15M triangles</option>
+              <option value="compact">Forest · 96 detailed trees</option>
+              <option value="high">Dense forest · 256 detailed trees</option>
+              <option value="ultra">Extreme forest · 512 detailed trees</option>
             </select>
           </label>
-          <p class="muted">Choose a density, then press Highland ruins to rebuild. Nanite on/off always uses that same geometry.</p>
+          <p class="muted">Choose a forest density, then build. Both modes use the same trees. Terrain sample uses density to set its grid resolution.</p>
+          <button id="forest-sample" type="button" class="file-button">Build forest</button>
           <div class="scene-buttons">
-            <button id="terrain-sample" type="button">Highland ruins</button>
+            <button id="terrain-sample" type="button">Terrain sample</button>
             <button id="navigation-mode" type="button" aria-pressed="true">Walking</button>
           </div>
-          <div id="asset-name" class="asset-name">Highland ruins</div>
+          <div id="asset-name" class="asset-name">Terrain sample</div>
           <p class="muted">Load a binary glTF. The largest mesh is normalised and rebuilt into boundary-locked meshlet groups in the browser.</p>
           <label class="file-button">
             <input id="asset-file" type="file" accept=".glb,model/gltf-binary" />

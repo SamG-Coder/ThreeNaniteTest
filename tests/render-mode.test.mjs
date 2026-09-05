@@ -46,6 +46,8 @@ test('Nanite off bypasses compute and readback; switching restores visualization
   pipeline.setNaniteEnabled(false);
   pipeline.render(0);
   assert.equal(renders, 1);
+  pipeline.render(600, true);
+  assert.equal(renders, 1, 'Preparing an attached asset must not issue a second scene draw');
   assert.equal(stats.submittedTriangles, 24);
   assert.equal(stats.naniteEnabled, false);
   assert.equal(pipeline.baselineMesh.visible, true);

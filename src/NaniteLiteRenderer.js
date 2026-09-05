@@ -85,7 +85,8 @@ export class NaniteLiteRenderer {
     this.maxVisibleClusters = options.maxVisibleClusters ?? MAX_VISIBLE_CLUSTERS;
     this.gridSize = options.gridSize ?? INSTANCE_GRID_SIZE;
     this.spacing = options.spacing ?? INSTANCE_SPACING;
-    this.instanceCount = this.gridSize * this.gridSize;
+    this.customInstanceData = options.instanceData ?? null;
+    this.instanceCount = this.customInstanceData ? this.customInstanceData.length / 4 : this.gridSize * this.gridSize;
     this.onStats = options.onStats ?? (() => {});
     if (Math.ceil(this.instanceCount * asset.groupCount / 64) > 65535) {
       throw new Error('Asset group count exceeds the single-dispatch limit. Reduce mesh complexity or instance count.');
@@ -365,9 +366,9 @@ export class NaniteLiteRenderer {
       createStorageAttribute(asset.groupLods, 4), 'vec4', asset.groupCount * asset.lods.length
     ).toReadOnly();
 
-    const instanceData = this.gameScene
+    const instanceData = this.customInstanceData ?? (this.gameScene
       ? new Float32Array([0, 0, 0, 1])
-      : createInstanceData(this.gridSize, this.spacing);
+      : createInstanceData(this.gridSize, this.spacing));
     this.instanceDataAttribute = createStorageAttribute(instanceData, 4);
     const instanceDataBuffer = storage(
       this.instanceDataAttribute,
@@ -987,13 +988,15 @@ export class NaniteLiteRenderer {
     this.previousFrameValid = true;
   }
 
-  render(now = performance.now()) {
+  render(now = performance.now(), prepareOnly = false) {
     if (!this.settings.naniteEnabled) {
+      if (!prepareOnly) {
       this.renderer.setRenderTarget(this.sceneTarget);
       this.renderer.clear();
       this.renderer.render(this.scene, this.camera);
       this.renderer.setRenderTarget(null);
       this.blitQuad.render(this.renderer);
+      }
       if (now - this.lastReadbackAt >= 500) {
         this.lastReadbackAt = now;
         this.onStats({
@@ -1014,6 +1017,7 @@ export class NaniteLiteRenderer {
     this.renderer.compute(this.computeClear);
     this.renderer.compute(this.computeCull);
     this.renderer.compute(this.computeDrawArguments);
+    if (prepareOnly) { this.requestStatsReadback(now); return; }
 
     this.renderer.setRenderTarget(this.sceneTarget);
     this.renderer.clear();

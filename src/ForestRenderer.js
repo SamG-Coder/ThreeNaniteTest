@@ -1,0 +1,60 @@
+import * as THREE from 'three/webgpu';
+import { positionLocal, time, sin, vec3, float } from 'three/tsl';
+import { NaniteLiteRenderer } from './NaniteLiteRenderer.js';
+
+// Each asset has its own compute/indirect buffers. Both draws share one scene,
+// camera and presentation pass; the original indexed instances are the baseline.
+export class ForestRenderer {
+  constructor(renderer, camera, terrainAsset, treeAsset, world, onStats) {
+    this.samples = new Map(); this.enabled = true; this.onStats = onStats;
+    const receive = key => stats => {
+      if (stats.naniteEnabled !== this.enabled) return;
+      this.samples.set(key,stats);
+      if(this.samples.size!==2) return;
+      const values=[...this.samples.values()];
+      const sum=key=>values.reduce((total,s)=>total+(s[key]??0),0);
+      this.onStats({naniteEnabled:this.enabled,sourceTriangles:sum('sourceTriangles'),
+        sourceSceneTriangles:sum('sourceSceneTriangles'),submittedTriangles:sum('submittedTriangles'),
+        visibleMeshlets:sum('visibleMeshlets'),capacity:sum('capacity'),instances:sum('instances'),
+        groups:sum('groups'),lockedVertices:sum('lockedVertices'),assetBytes:sum('assetBytes'),
+        overflowed:values.some(s=>s.overflowed),
+        lodCounts:terrainAsset.lods.map((_,i)=>values.reduce((total,s)=>total+(s.lodCounts[i]??0),0))});
+    };
+    this.terrain = new NaniteLiteRenderer(renderer,camera,terrainAsset,{sourceGeometry:world.geometry,
+      gameScene:true,gridSize:1,maxVisibleClusters:8192,onStats:receive('terrain')});
+    this.trees = new NaniteLiteRenderer(renderer,camera,treeAsset,{sourceGeometry:world.treeGeometry,
+      gameScene:true,gridSize:1,instanceData:world.treeInstances,maxVisibleClusters:32768,onStats:receive('trees')});
+    this.pipelines=[this.terrain,this.trees];
+    this.asset=terrainAsset;
+    const scene=this.terrain.scene;
+    scene.add(this.trees.naniteMesh,this.trees.baselineMesh);
+    scene.background=new THREE.Color(0xb6d9df);
+    scene.fog=new THREE.FogExp2(0xb6d9df,.008);
+    // Opaque lake shading is identical in both modes; it is not counted as
+    // Nanite geometry, and does not manufacture a geometry speedup.
+    const waterMaterial=new THREE.MeshStandardNodeMaterial({color:0x1c8585,roughness:.23,metalness:.35});
+    waterMaterial.positionNode=vec3(positionLocal.x,
+      positionLocal.y.add(sin(positionLocal.x.mul(.8).add(time)).mul(.025))
+        .add(sin(positionLocal.z.mul(.63).sub(time.mul(.8))).mul(.025)),positionLocal.z);
+    this.water=new THREE.Mesh(new THREE.CircleGeometry(24,128).rotateX(-Math.PI/2),waterMaterial);
+    this.water.position.set(0,.1,-9); scene.add(this.water);
+    // A small physical roughness stops the lake becoming a mirror without IBL.
+    waterMaterial.roughnessNode=float(.23);
+  }
+  render(now) { this.trees.render(now,true); this.terrain.render(now); }
+  setNaniteEnabled(value) {
+    this.enabled=Boolean(value); this.samples.clear();
+    for(const p of this.pipelines) p.setNaniteEnabled(value);
+  }
+  setOutputMode(value) { for(const p of this.pipelines) p.setOutputMode(value); }
+  setLodThreshold(value) { for(const p of this.pipelines) p.setLodThreshold(value); }
+  setConeEnabled(value) { for(const p of this.pipelines) p.setConeEnabled(value); }
+  setOcclusionEnabled() { for(const p of this.pipelines) p.setOcclusionEnabled(false); }
+  setOccludersVisible() { for(const p of this.pipelines) p.setOccludersVisible(false); }
+  invalidateOcclusionHistory() { for(const p of this.pipelines) p.invalidateOcclusionHistory(); }
+  resize() { for(const p of this.pipelines) p.resize(); }
+  dispose() {
+    this.samples.clear(); this.water.geometry.dispose(); this.water.material.dispose();
+    for(const p of this.pipelines) p.dispose();
+  }
+}
