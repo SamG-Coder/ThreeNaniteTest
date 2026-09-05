@@ -1,3 +1,5 @@
+import {landscapeVisibilityWGSL} from '../../src/visibility/landscapeShaders.js';
+import {createLandscapeTexture} from '../../src/landscapeMaterials.js';
 import {visibilityWGSL,cullWGSL,pyramidWGSL,pyramidBaseWGSL} from '../../src/visibility/shaders.js';
 import {forestFastWGSL} from '../../src/bitmask/forestFastShaders.js';
 import {forestBoundedWGSL,forestDispatchWGSL} from '../../src/bitmask/forestBoundedShaders.js';
@@ -15,7 +17,7 @@ const save=(name,data)=>writeFileSync(`${out}/${name}.bin`,new Uint8Array(data.b
 for(let a=0;a<2;a++){
  const asset=assets[a],colors=asset.sourceColors??(a?world.treeGeometry:world.geometry).attributes.color;
  const vertices=new Float32Array(asset.vertexCount*12);
- for(let i=0;i<asset.vertexCount;i++){vertices.set(asset.vertices.subarray(i*4,i*4+4),i*12);vertices.set(asset.normals.subarray(i*4,i*4+4),i*12+4);vertices.set([colors.getX(i),colors.getY(i),colors.getZ(i),asset.coverage?.[i]??1],i*12+8);}
+ for(let i=0;i<asset.vertexCount;i++){vertices.set(asset.vertices.subarray(i*4,i*4+4),i*12);vertices.set(asset.normals.subarray(i*4,i*4+4),i*12+4);if(world.landscape&&!s.gpu.assets[1].voxelRoot)vertices[i*12+7]=(a?world.treeGeometry:world.geometry).attributes.surface.getX(i);vertices.set([colors.getX(i),colors.getY(i),colors.getZ(i),asset.coverage?.[i]??1],i*12+8);}
  const indices=new Uint32Array(asset.indices.length+asset.clusterLod.length);indices.set(asset.indices);indices.set(asset.clusterLod,asset.indices.length);
  save(`${a}-bounds`,asset.clusterBounds);
  save(`${a}-vertices`,vertices);save(`${a}-indices`,indices);save(`${a}-matrices`,Float32Array.from(matrices[a].flatMap(m=>m.elements)));
@@ -31,3 +33,5 @@ console.log('Exported actual forest GPU buffers',out,s.counts);
 writeFileSync(`${out}/dispatch.wgsl`,forestDispatchWGSL);
 
 for(const [name,code] of Object.entries({visibility:visibilityWGSL,cull:cullWGSL,pyramid:pyramidWGSL,base:pyramidBaseWGSL}))writeFileSync(`${out}/${name}.wgsl`,code);
+
+if(world.landscape && flags.voxels!=='true'){writeFileSync(`${out}/visibility.wgsl`,landscapeVisibilityWGSL);save('material',createLandscapeTexture().image.data);}

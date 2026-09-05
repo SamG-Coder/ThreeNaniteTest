@@ -315,7 +315,7 @@ async function initialise() {
       await new Promise(resolve=>requestAnimationFrame(resolve));
       const world=createLandscapeScene(ui.elements.geometryDensity.value);
       ui.elements.renderMode.value='full';
-      ui.elements.rasterizerMode.value='bitmask-voxel';
+      ui.elements.rasterizerMode.value='bitmask-visibility';
       await rebuildScene(world.geometry,`${world.name} · ${world.treeInstances.length/4} trees · ${world.grassClumps.toLocaleString()} grass clumps`,world);
     }catch(error){ui.showFatalError(error);}
   };

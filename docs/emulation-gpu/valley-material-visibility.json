@@ -1,0 +1,117 @@
+{
+  "depthOrdering": false,
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 128,
+    "height": 192,
+    "scene": "landscape",
+    "grassClumps": 7000,
+    "clusterCounts": [
+      26764,
+      18489
+    ],
+    "instanceCounts": [
+      1,
+      80
+    ],
+    "counts": {
+      "groupsVisited": 6096,
+      "groupsRejected": 5116,
+      "meshletsTested": 54228,
+      "frustumRejected": 4834,
+      "coneRejected": 646,
+      "actualTriangles": 3119039,
+      "paddedTriangleSlots": 3119872,
+      "asset0": 1602,
+      "asset1": 47146,
+      "binDispatchInvocations": 25165440,
+      "idleBinInvocations": 22045568
+    },
+    "sourceTriangles": 21620288,
+    "capacity": [
+      9532,
+      328400
+    ],
+    "geometry": "full",
+    "density": "compact",
+    "voxels": false,
+    "voxelCells": 0,
+    "cpuTimingsMs": {
+      "sceneBuild": 2652.5133560000004,
+      "assetBuild": 9848.867934,
+      "selection": 35.38624700000037,
+      "projection": null
+    },
+    "camera": {
+      "position": [
+        30,
+        5.249413617878461,
+        14
+      ],
+      "pitch": -0.09,
+      "yaw": 0.856,
+      "fov": 50
+    },
+    "selection": "CPU equivalent of cull, deterministic slot order"
+  },
+  "limitations": [
+    "Software Vulkan, not phone timing",
+    "Uses exported CPU-selected cluster lists; Three selection is outside harness",
+    "Hardware coplanar ties can pick different IDs after list reordering"
+  ],
+  "frames": [
+    {
+      "enabled": true,
+      "seed": 0,
+      "recovery": 48748,
+      "culled": 0,
+      "covered": 18886,
+      "wallMs": 771.4362230035476,
+      "frame": 0,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 2,
+      "colorMismatches": 2,
+      "depthSHA256": "2924b9a4be490d637085c58b9f8cd34ea6286632dea3059a79d68e2ea4be9156"
+    },
+    {
+      "enabled": true,
+      "seed": 2473,
+      "recovery": 46269,
+      "culled": 6,
+      "covered": 18886,
+      "wallMs": 777.0419890002813,
+      "frame": 1,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 5,
+      "colorMismatches": 5,
+      "depthSHA256": "2924b9a4be490d637085c58b9f8cd34ea6286632dea3059a79d68e2ea4be9156"
+    },
+    {
+      "enabled": true,
+      "seed": 2473,
+      "recovery": 46274,
+      "culled": 1,
+      "covered": 18619,
+      "wallMs": 824.4724439937272,
+      "frame": 2,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 4,
+      "colorMismatches": 4,
+      "depthSHA256": "cce6122d74afe6bed2dbe714e4b63d9ad11c02e36266525aef50cf3b0ce3732b"
+    }
+  ]
+}

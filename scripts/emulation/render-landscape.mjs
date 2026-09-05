@@ -1,3 +1,4 @@
+import {createLandscapeTexture,createLandscapeMaterial} from '../../src/landscapeMaterials.js';
 // Native Dawn/SwiftShader visual smoke test of the actual Three water/sky shaders.
 // Hardware comparison geometry; does not measure the browser visibility path.
 import fs from 'node:fs';
@@ -15,9 +16,9 @@ const width=640,height=400;
 const canvas={width,height,style:{},addEventListener(){},removeEventListener(){},getContext(){return null;}};
 const renderer=new THREE.WebGPURenderer({canvas,device,antialias:false});await renderer.init();renderer.setSize(width,height,false);renderer.toneMapping=THREE.ACESFilmicToneMapping;
 const world=createLandscapeScene('compact');
-const scene=new THREE.Scene();scene.background=new THREE.Color(0xb6d9df);scene.fog=new THREE.FogExp2(0xb6d9df,.008);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xb6d9df);scene.fog=new THREE.FogExp2(0xb6d9df,.0018);
 scene.add(new THREE.HemisphereLight(0xb9d8ff,0x303324,2));const sun=new THREE.DirectionalLight(0xfff0d7,2.5);sun.position.set(5,10,3.5);scene.add(sun);
-const mat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.9});scene.add(new THREE.Mesh(world.geometry,mat));
+const mat=createLandscapeMaterial(createLandscapeTexture());scene.add(new THREE.Mesh(world.geometry,mat));
 const trees=new THREE.InstancedMesh(world.treeGeometry,mat,world.treeInstances.length/4),m=new THREE.Matrix4(),data=world.treeInstances;
 for(let i=0;i<data.length/4;i++){m.makeRotationY(-i*.61803398875);m.scale(new THREE.Vector3().setScalar(data[i*4+3]));m.setPosition(data[i*4],data[i*4+1],data[i*4+2]);trees.setMatrixAt(i,m);}
 scene.add(trees,createLandscapeWater(world),createLandscapeSky());

@@ -297,7 +297,9 @@ ordering in Epic's pipeline, not a claimed phone speedup. See the updated
 [Open Willowmere Valley](https://samg-coder.github.io/ThreeNaniteTest/?scene=landscape),
 or choose **Build Willowmere Valley** under Controls. It combines a walkable lake
 shore, terrain, detailed trees, rock outcrops and dense geometric grass using the
-streaming/atomic visibility technique. Water adds animated waves, Fresnel sky
+atomic visibility technique, with a separate alder tree model, procedural material
+textures, smooth shading and light haze. The valley defaults to full-detail geometry
+without distant voxel substitutions. Water adds animated waves, Fresnel sky
 reflection, shallow/deep color, sun highlights and shoreline foam.
 
 Touch controls are supported. The old forest remains available for comparison.

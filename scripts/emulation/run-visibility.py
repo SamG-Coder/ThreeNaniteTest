@@ -33,7 +33,16 @@ def group(pipeline,resources,bindings):
 cull={**common,1:bounds[0],2:bounds[1],18:seed,19:recovery,20:hzb.create_view(),21:args};groups={}
 for name,bindings in {'clearFrame':[10,11,17],'clearHistory':[10,17],'arguments':[0,11,21],'seed':[0,4,8,10,11,12,18],'recover':[0,1,2,3,4,7,8,10,11,12,19,20]}.items():groups[name]=group(compute[name],cull,bindings)
 geo={**common,13:ids.create_view(),14:depth.create_view(),15:color.create_view(),16:outdepth.create_view()}
-groups['coverage']=group(compute['coverage'],geo,[0,10,13,17]);groups['shadeVisible']=group(compute['shadeVisible'],geo,[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16])
+material_bindings=[]
+if (root/'material.bin').exists():
+ from PIL import Image
+ material=d.create_texture(size=(1024,256,1),mip_level_count=11,format='rgba8unorm',usage=T.TEXTURE_BINDING|T.COPY_DST)
+ im=Image.frombytes('RGBA',(1024,256),(root/'material.bin').read_bytes())
+ for level in range(11):
+  mw,mh=max(1,1024>>level),max(1,256>>level)
+  d.queue.write_texture({'texture':material,'mip_level':level},im.resize((mw,mh),Image.Resampling.BOX).tobytes(),{'bytes_per_row':mw*4,'rows_per_image':mh},(mw,mh,1))
+ geo[22]=material.create_view();geo[23]=d.create_sampler(min_filter='linear',mag_filter='linear',mipmap_filter='linear',address_mode_u='repeat',address_mode_v='repeat');material_bindings=[22,23]
+groups['coverage']=group(compute['coverage'],geo,[0,10,13,17]);groups['shadeVisible']=group(compute['shadeVisible'],geo,[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16]+material_bindings)
 drawgroups=[group(render,{**common,9:lst},[0,1,2,3,4,5,6,7,8,9]) for lst in [seed,recovery]]
 groups['base']=group(compute['base'],{0:depth.create_view(),1:hzb.create_view(base_mip_level=0,mip_level_count=1),2:bits,3:dims},[0,1,2,3])
 reducegroups=[group(compute['reduce'],{0:hzb.create_view(base_mip_level=i,mip_level_count=1),1:hzb.create_view(base_mip_level=i+1,mip_level_count=1)},[0,1]) for i in range(levels-1)]
@@ -88,3 +97,5 @@ for i in range(a.frames):
  report['frames'].append(result);print(result,flush=True)
  if diff>2e-6 or holes:raise RuntimeError('HZB removed visible geometry')
 Path(a.output or root/'visibility-results.json').write_text(json.dumps(report,indent=2))
+
+(root/'last-color.rgba16').write_bytes(actual[3])

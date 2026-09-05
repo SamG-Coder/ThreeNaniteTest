@@ -1,3 +1,4 @@
+import {landscapeVisibilityWGSL} from './landscapeShaders.js';
 import { ForestBitmaskRenderer } from '../bitmask/ForestBitmaskRenderer.js';
 import { visibilityWGSL, cullWGSL, pyramidWGSL, pyramidBaseWGSL } from './shaders.js';
 
@@ -37,8 +38,9 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
     this.hzb=this.device.createTexture({size:[this.pyramidSize,this.pyramidSize],mipLevelCount:this.pyramidLevels,format:'r32float',usage:GPUTextureUsage.STORAGE_BINDING|GPUTextureUsage.TEXTURE_BINDING});
     if(this.layoutBuffer)this.allocateHistory();
   }
-  get geometryWGSL(){return visibilityWGSL;}
+  get geometryWGSL(){return this.forest.landscapeTexture?landscapeVisibilityWGSL:visibilityWGSL;}
   async init(){
+    if(this.forest.landscapeTexture){this.renderer._textures.updateTexture(this.forest.landscapeTexture);this.materialSampler=this.device.createSampler({minFilter:'linear',magFilter:'linear',mipmapFilter:'linear',addressModeU:'repeat',addressModeV:'repeat'});}
     const module=this.device.createShaderModule({code:this.geometryWGSL,label:'Forest visibility'});
     const compilation=await module.getCompilationInfo();
     const errors=compilation.messages.filter(message=>message.type==='error');
@@ -64,7 +66,9 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
     this.groups={};
     for(const [name,ids] of Object.entries({clearFrame:[10,11,17],clearHistory:[10,17],arguments:[0,11,21],seed:[0,4,8,10,11,12,18],recover:[0,1,2,3,4,7,8,10,11,12,19,20]}))this.groups[name]=group(this.compute[name],cull,ids);
     this.groups.coverage=group(this.compute.coverage,geometry,[0,10,13,17]);
-    this.groups.shadeVisible=group(this.compute.shadeVisible,geometry,[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16]);
+    const materialBindings=this.materialSampler?[22,23]:[];
+    if(this.materialSampler){geometry[22]=view(this.forest.landscapeTexture);geometry[23]=this.materialSampler;}
+    this.groups.shadeVisible=group(this.compute.shadeVisible,geometry,[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16,...materialBindings]);
     this.drawGroups=[this.seedList,this.recoveryList].map(list=>group(this.visibilityPipeline,{...common,9:resource(list)},[0,1,2,3,4,5,6,7,8,9]));
     this.groups.base=group(this.compute.base,{0:this.hardwareDepth.createView(),1:this.hzb.createView({baseMipLevel:0,mipLevelCount:1}),2:resource(this.atomicBits),3:resource(this.dimensions)},[0,1,2,3]);
     this.reduceGroups=Array.from({length:this.pyramidLevels-1},(_,i)=>group(this.compute.reduce,{0:this.hzb.createView({baseMipLevel:i,mipLevelCount:1}),1:this.hzb.createView({baseMipLevel:i+1,mipLevelCount:1})},[0,1]));

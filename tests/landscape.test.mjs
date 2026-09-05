@@ -1,3 +1,4 @@
+import {createLandscapeTexture,createLandscapeMaterial} from '../src/landscapeMaterials.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three/webgpu';
@@ -28,7 +29,7 @@ test('actual water and sky TSL shaders compile with Dawn/Tint',async()=>{
  Object.assign(globalThis,globals);const gpu=create(['backend=null']),adapter=await gpu.requestAdapter(),device=await adapter.requestDevice();
  const renderer=new THREE.WebGPURenderer({canvas:{width:320,height:240,style:{},addEventListener(){},removeEventListener(){}}});renderer.hasFeature=()=>false;
  try{
-  for(const mesh of [createLandscapeWater(world),createLandscapeSky()]){
+  for(const mesh of [createLandscapeWater(world),createLandscapeSky(),new THREE.Mesh(world.geometry.clone(),createLandscapeMaterial(createLandscapeTexture()))]){
    const builder=renderer.backend.createNodeBuilder(mesh,renderer);builder.scene=new THREE.Scene();builder.camera=new THREE.PerspectiveCamera();builder.build();
    for(const code of [builder.vertexShader,builder.fragmentShader]){
     const module=device.createShaderModule({code}),info=await module.getCompilationInfo();

@@ -50,7 +50,7 @@ export function createLandscapeWater(world){
   const ripple=sin(waterDepth.mul(20).sub(time.mul(1.7)).add(sin(positionWorld.x.mul(.8)).mul(.8)));
   const foam=shore.mul(smoothstep(.45,.95,ripple)).mul(.5);
   water.assign(mix(water,vec3(.73,.8,.71),foam));
-  const delta=cameraPosition.sub(positionWorld),fog=float(1).sub(exp(dot(delta,delta).mul(-.000064)));
+  const delta=cameraPosition.sub(positionWorld),fog=float(1).sub(exp(dot(delta,delta).mul(-.00000324)));
   return vec4(mix(water,vec3(.4678,.6939,.7379),fog),1);
  })();
  const mesh=new THREE.Mesh(geometry,material);mesh.name='Willowmere lake';mesh.position.set(spec.x,spec.y,spec.z);return mesh;

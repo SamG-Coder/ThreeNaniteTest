@@ -36,6 +36,7 @@ export class ForestBitmaskRenderer {
       for(let i=0;i<p.asset.vertexCount;i++){
         vertices.set(p.asset.vertices.subarray(i*4,i*4+4),i*12);
         vertices.set(p.asset.normals.subarray(i*4,i*4+4),i*12+4);
+        if(p.sourceSurface)vertices[i*12+7]=p.sourceSurface.getX(i);
         vertices.set(p.sourceColors?[p.sourceColors.getX(i),p.sourceColors.getY(i),p.sourceColors.getZ(i),1]:[.3,.5,.3,1],i*12+8);
       }
       const indices=new Uint32Array(p.asset.indices.length+p.asset.clusterLod.length);

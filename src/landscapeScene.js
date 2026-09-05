@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {createDetailedTree} from './forestScene.js';
+import {createLandscapeTree} from './landscapeTree.js';
 export const LANDSCAPE_PRESETS={compact:{trees:80,grass:7000,grid:192},high:{trees:160,grass:16000,grid:320},ultra:{trees:320,grass:30000,grid:448}};
 const smooth=THREE.MathUtils.smoothstep;
 export function landscapeHeight(x,z){
@@ -19,7 +19,7 @@ function colored(g,base){
   const shade=.85+.12*Math.sin(p.getX(i)*4+p.getZ(i)*3)+.03*n.getY(i);
   color.copy(base).multiplyScalar(shade);c.set(color.toArray(),i*3);
  }
- g.setAttribute('color',new THREE.BufferAttribute(c,3));return g;
+ g.setAttribute('color',new THREE.BufferAttribute(c,3));g.setAttribute('surface',new THREE.Float32BufferAttribute(new Float32Array(p.count).fill(1),1));return g;
 }
 function makeGrass(random,count,trees){
  const positions=[],normals=[],colors=[],indices=[];let placed=0;
@@ -49,6 +49,7 @@ function makeGrass(random,count,trees){
  }
  const g=new THREE.BufferGeometry();
  for(const[name,data]of[['position',positions],['normal',normals],['color',colors]])g.setAttribute(name,new THREE.Float32BufferAttribute(data,3));
+ g.setAttribute('surface',new THREE.Float32BufferAttribute(new Float32Array(positions.length/3).fill(4),1));
  g.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(positions.length/3*2),2));g.setIndex(indices);return {geometry:g,clumps:placed};
 }
 export function createLandscapeScene(density='high'){
@@ -65,6 +66,7 @@ export function createLandscapeScene(density='high'){
   color.multiplyScalar(.91+.08*Math.sin(x*.55+z*.33)*Math.cos(z*.67));colors.set(color.toArray(),i*3);
  }
  ground.setAttribute('color',new THREE.BufferAttribute(colors,3));
+ ground.setAttribute('surface',new THREE.Float32BufferAttribute(new Float32Array(p.count),1));
  const parts=[ground],obstacles=[],data=[];
  for(let attempt=0;data.length/4<preset.trees&&attempt<50000;attempt++){
   const x=(random()-.5)*199,z=(random()-.5)*199,y=landscapeHeight(x,z);
@@ -75,7 +77,7 @@ export function createLandscapeScene(density='high'){
  for(let i=0;i<65;i++){
   const angle=random()*Math.PI*2,r=32+random()*60,x=Math.cos(angle)*r*1.15,z=Math.sin(angle)*r-12,y=landscapeHeight(x,z);
   if(y<.8||landscapePath(x,z)<3||Math.hypot(x-30,z-14)<6)continue;
-  const size=.65+random()*2.4,g=new THREE.SphereGeometry(1,24,16),v=g.attributes.position;
+  const size=.65+random()*2.4,g=new THREE.SphereGeometry(1,64,48),v=g.attributes.position;
   for(let j=0;j<v.count;j++){
    const a=v.getX(j),b=v.getY(j),c=v.getZ(j),noise=1+.12*Math.sin(a*9+c*6)*Math.sin(b*11-c*4);
    v.setXYZ(j,a*noise*size,b*noise*size*.65,c*noise*size*.82);
@@ -83,7 +85,7 @@ export function createLandscapeScene(density='high'){
   g.computeVertexNormals();colored(g,new THREE.Color(0x858a7c));g.rotateY(random()*Math.PI);g.translate(x,y+size*.14,z);parts.push(g);obstacles.push({x,z,radius:size*.75});
  }
  const geometry=mergeGeometries(parts,false);for(const part of parts)part.dispose();geometry.computeBoundingSphere();geometry.computeBoundingBox();
- return {name:'Willowmere Valley',landscape:true,forest:true,geometry,treeGeometry:createDetailedTree(),treeInstances:new Float32Array(data),
+ return {name:'Willowmere Valley',landscape:true,forest:true,geometry,treeGeometry:createLandscapeTree(),treeInstances:new Float32Array(data),
   obstacles,heightAt:landscapeHeight,blockedAt:(x,z)=>landscapeHeight(x,z)<.65,spawn:[30,0,14],spawnYaw:Math.atan2(30,26),spawnPitch:-.09,bounds:106,
   grassClumps:grass.clumps,water:{x:0,z:-12,y:.35,radius:39,scaleX:1.3,scaleZ:.86}};
 }

@@ -187,7 +187,7 @@ fn shade(t:Triangle)->vec3<f32>{
   let hemi=.55+.45*clamp(t.normal.y*.5+.5,0.0,1.0);
   let sun=max(0.0,dot(t.normal.xyz,normalize(vec3<f32>(.5,1.0,.35))))*.85;
   let lit=t.color.rgb*(hemi+sun);
-  let fog=1.0-exp(-.008*.008*t.normal.w*t.normal.w);
+  let fog=1.0-exp(-.0018*.0018*t.normal.w*t.normal.w);
   return mix(lit,vec3<f32>(.4678,.6939,.7379),fog);
 }
 var<workgroup> batchIds:array<u32,32>;
