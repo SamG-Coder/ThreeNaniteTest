@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {createLandscapeTree} from './landscapeTree.js';
-export const LANDSCAPE_PRESETS={compact:{trees:80,grass:7000,grid:192},high:{trees:160,grass:16000,grid:320},ultra:{trees:320,grass:30000,grid:448}};
+export const LANDSCAPE_PRESETS={compact:{trees:80,grass:7000,grid:256},high:{trees:160,grass:16000,grid:448},ultra:{trees:320,grass:30000,grid:640}};
 const smooth=THREE.MathUtils.smoothstep;
 export function landscapeHeight(x,z){
  const r=Math.hypot(x/1.3,(z+12)/.86),angle=Math.atan2(z+12,x);
@@ -10,7 +10,8 @@ export function landscapeHeight(x,z){
  const rim=smooth(Math.hypot(x*.85,z*.8),43,110);
  const rolling=2.2*Math.sin(x*.053+.4)*Math.cos(z*.046)+.65*Math.sin(x*.19+z*.12)+.22*Math.sin(x*.62-z*.41);
  const ridge=10+9*Math.sin(x*.028-z*.018)**2+12*smooth(-z,45,110);
- return -3.8+bank*(6+rolling*.6+rim*ridge);
+ const relief=.11*Math.sin(x*2.2+Math.sin(z*.7))*Math.cos(z*2)+.045*Math.sin(x*3.1-z*1.7);
+ return -3.8+bank*(6+rolling*.6+rim*ridge+relief);
 }
 export function landscapePath(x,z){return Math.abs(x-(18+13*Math.sin(z*.029)));}
 function colored(g,base){
@@ -56,7 +57,7 @@ export function createLandscapeScene(density='high'){
  const preset=LANDSCAPE_PRESETS[density];if(!preset)throw new Error('Unknown landscape density');
  let seed=572912;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  const ground=new THREE.PlaneGeometry(224,224,preset.grid,preset.grid).rotateX(-Math.PI/2),p=ground.attributes.position;
- for(let i=0;i<p.count;i++)p.setY(i,landscapeHeight(p.getX(i),p.getZ(i)));ground.computeVertexNormals();
+ for(let i=0;i<p.count;i++){p.setY(i,landscapeHeight(p.getX(i),p.getZ(i)));ground.attributes.uv.setXY(i,p.getX(i)*.7,p.getZ(i)*.7);}ground.computeVertexNormals();
  const sand=new THREE.Color(0xb7ab84),earth=new THREE.Color(0x76664b),moss=new THREE.Color(0x52603c),rock=new THREE.Color(0x7b827c),color=new THREE.Color();
  const colors=new Float32Array(p.count*3);
  for(let i=0;i<p.count;i++){
@@ -82,6 +83,7 @@ export function createLandscapeScene(density='high'){
    const a=v.getX(j),b=v.getY(j),c=v.getZ(j),noise=1+.12*Math.sin(a*9+c*6)*Math.sin(b*11-c*4);
    v.setXYZ(j,a*noise*size,b*noise*size*.65,c*noise*size*.82);
   }
+  for(let j=0;j<v.count;j++){g.attributes.uv.setXY(j,g.attributes.uv.getX(j)*size*3,g.attributes.uv.getY(j)*size*1.5);}
   g.computeVertexNormals();colored(g,new THREE.Color(0x858a7c));g.rotateY(random()*Math.PI);g.translate(x,y+size*.14,z);parts.push(g);obstacles.push({x,z,radius:size*.75});
  }
  const geometry=mergeGeometries(parts,false);for(const part of parts)part.dispose();geometry.computeBoundingSphere();geometry.computeBoundingBox();

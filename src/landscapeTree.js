@@ -13,10 +13,12 @@ export function createLandscapeTree(){
  };
  const limb=(points,radius,radial=16,steps=24)=>{
   const curve=new THREE.CatmullRomCurve3(points),g=new THREE.TubeGeometry(curve,steps,radius,radial,false),p=g.attributes.position;
+  const arcLength=curve.getLength();
   for(let i=0;i<=steps;i++){
    const t=i/steps,center=curve.getPointAt(t),taper=.08+.92*(1-t)**.85;
    for(let j=0;j<=radial;j++){
     const k=i*(radial+1)+j,angle=j/radial*Math.PI*2;
+    g.attributes.uv.setXY(k,j/radial*Math.max(1,2*Math.PI*radius*1.4),t*arcLength*.28);
     const flute=1+.075*Math.sin(angle*9+t*3)+.045*Math.sin(angle*17-t*8);
     p.setXYZ(k,center.x+(p.getX(k)-center.x)*taper*flute,center.y+(p.getY(k)-center.y)*taper*flute,center.z+(p.getZ(k)-center.z)*taper*flute);
    }

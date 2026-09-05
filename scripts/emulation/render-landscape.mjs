@@ -23,6 +23,7 @@ const trees=new THREE.InstancedMesh(world.treeGeometry,mat,world.treeInstances.l
 for(let i=0;i<data.length/4;i++){m.makeRotationY(-i*.61803398875);m.scale(new THREE.Vector3().setScalar(data[i*4+3]));m.setPosition(data[i*4],data[i*4+1],data[i*4+2]);trees.setMatrixAt(i,m);}
 scene.add(trees,createLandscapeWater(world),createLandscapeSky());
 const camera=new THREE.PerspectiveCamera(50,width/height,.1,500);camera.position.set(30,world.heightAt(30,14)+1.7,14);camera.lookAt(0,1,-12);
+if(process.argv.includes('--close')){camera.position.set(30,world.heightAt(30,14)+1.1,14);camera.lookAt(34,world.heightAt(34,18)+.1,18);}
 const target=new THREE.RenderTarget(width,height,{type:THREE.UnsignedByteType});target.texture.colorSpace=THREE.SRGBColorSpace;renderer.setRenderTarget(target);
 renderer.render(scene,camera);await device.queue.onSubmittedWorkDone();
 const pixels=await renderer.readRenderTargetPixelsAsync(target,0,0,width,height);

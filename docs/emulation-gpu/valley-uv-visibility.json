@@ -1,0 +1,123 @@
+{
+  "depthOrdering": false,
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 128,
+    "height": 192,
+    "scene": "landscape",
+    "grassClumps": 7000,
+    "clusterCounts": [
+      28203,
+      18486
+    ],
+    "instanceCounts": [
+      1,
+      80
+    ],
+    "counts": {
+      "groupsVisited": 6096,
+      "groupsRejected": 5200,
+      "meshletsTested": 49897,
+      "frustumRejected": 4837,
+      "coneRejected": 568,
+      "actualTriangles": 2846880,
+      "paddedTriangleSlots": 2847488,
+      "asset0": 1572,
+      "asset1": 42920,
+      "binDispatchInvocations": 25165440,
+      "idleBinInvocations": 22317952
+    },
+    "sourceTriangles": 21665600,
+    "capacity": [
+      10230,
+      328400
+    ],
+    "geometry": "full",
+    "density": "compact",
+    "voxels": false,
+    "voxelCells": 0,
+    "cpuTimingsMs": {
+      "sceneBuild": 2780.72691,
+      "assetBuild": 9378.350675,
+      "selection": 31.297624000000724,
+      "projection": null
+    },
+    "camera": {
+      "position": [
+        30,
+        5.2179279648424615,
+        14
+      ],
+      "pitch": -0.09,
+      "yaw": 0.856,
+      "fov": 50
+    },
+    "selection": "CPU equivalent of cull, deterministic slot order"
+  },
+  "limitations": [
+    "Software Vulkan, not phone timing",
+    "Uses exported CPU-selected cluster lists; Three selection is outside harness",
+    "Hardware coplanar ties can pick different IDs after list reordering"
+  ],
+  "frames": [
+    {
+      "enabled": true,
+      "seed": 0,
+      "recovery": 44492,
+      "culled": 0,
+      "covered": 18802,
+      "wallMs": 1421.9542170030763,
+      "frame": 0,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "06ffb95b4c82feb69cdfd84c9c77364fe044199b8a11e9a98c362122c6cc79bd"
+    },
+    {
+      "enabled": true,
+      "seed": 2375,
+      "recovery": 42116,
+      "culled": 1,
+      "covered": 18802,
+      "wallMs": 812.1921439960715,
+      "frame": 1,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 2,
+      "colorMismatches": 2,
+      "depthSHA256": "06ffb95b4c82feb69cdfd84c9c77364fe044199b8a11e9a98c362122c6cc79bd"
+    },
+    {
+      "enabled": true,
+      "seed": 2375,
+      "recovery": 42116,
+      "culled": 1,
+      "covered": 18522,
+      "wallMs": 827.2636979963863,
+      "frame": 2,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 4,
+      "colorMismatches": 4,
+      "depthSHA256": "5f8d120a095d9cc4bce108147d7e78a1d946511af9d1ef302538d3ee62c8b974"
+    }
+  ],
+  "uvInterpolation": {
+    "comparedPixels": 18522,
+    "differentWinnerPixels": 0,
+    "maxAbsoluteError": 3.814697265625e-05,
+    "reference": "hardware perspective-correct UV varying; same current draw lists"
+  }
+}

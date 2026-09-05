@@ -14,15 +14,28 @@ The valley now uses a separate alder-style tree model: tapered curved branches,
 buttress roots, serrated leaves with a raised midrib, and explicit leaf backfaces.
 Leaves have real silhouette gaps rather than opaque rectangular cards. Rocks use
 64 × 48 surface segments. Soil, mineral, bark and leaf detail comes from an original
-1024 × 256 mipmapped procedural texture atlas, baked once at startup. These are
+four-layer 256 × 256 mipmapped procedural texture array, baked once at startup. These are
 procedural materials, not scanned assets or photographic textures.
 
-In the default visibility mode, smooth vertex normals and world position are
-reconstructed from the winning triangle using perspective-correct barycentrics.
-Material tags use the unused normal W component: the existing 48-byte vertex
-format and atomic protocol remain unchanged. Texture sampling is confined to
-visible pixels. Hardware comparison also uses the atlas. Older software and
-streaming experiments retain their original vertex-color materials.
+In the default visibility mode, source UVs, vertex colours and smooth normals
+are interpolated using hardware-generated perspective weights for the winning
+triangle. World-space texture projection and triangle-average colour are no longer
+used. Terrain, rock, branch and leaf geometry carry authored UVs, including seams
+and coordinates outside 0–1. The hardware comparison uses the same texture array.
+Material layers have independent mip chains, preventing cross-material bleeding.
+Texture mip levels use projected triangle UV gradients rather than camera distance.
+
+The textured vertex format is 64 bytes (16 bytes more per source vertex) to keep
+UVs as float32. An RG32F attachment stores two interpolation weights at 8 bytes per
+render pixel, written during the existing seed/recovery visibility draws. This
+avoids unstable analytical weights on subpixel triangles. It adds memory/bandwidth,
+not another scene render. The atomic coverage/HZB protocol remains unchanged.
+Older software and streaming experiments retain their original 48-byte formats
+and vertex-colour materials. Phone performance after this quality change is unverified.
+
+The source terrain also includes small geometric relief and a denser grid. Full
+resolution retains this source geometry; it cannot recover detail absent from the
+original mesh. Terrain height and shoreline sampling use the same height function.
 
 Fog density is now 0.0018 instead of 0.008 in geometry and water shading. At
 100 world units, fog blending drops from about 47% to 3%; the distant bank remains
@@ -36,9 +49,9 @@ uses the terrain height along the actual shoreline rather than one large circle.
 
 | Density | Trees | Grass clumps | Terrain segments |
 | --- | ---: | ---: | ---: |
-| Compact | 80 | 7,000 | 192 × 192 |
-| Dense | 160 | 16,000 | 320 × 320 |
-| Extreme | 320 | 30,000 | 448 × 448 |
+| Compact | 80 | 7,000 | 256 × 256 |
+| Dense | 160 | 16,000 | 448 × 448 |
+| Extreme | 320 | 30,000 | 640 × 640 |
 
 Each grass clump has four bent blades with real front/back triangles. Grass is
 static in this version. Density controls change the workload, so compare renderer
@@ -71,9 +84,11 @@ No external textures, model downloads or new runtime libraries are required.
   Dawn/SwiftShader at 640×400 and visually inspected.
 - The new textured, full-detail atomic path was run on software Vulkan at
   128 × 192 for three frames, including camera movement. Depth and coverage
-  exactly matched unculled visibility. There were 2–5 ID/color differences per
+  exactly matched unculled visibility. There were 0–4 ID/color differences per
   frame from equal-depth surface ties after draw-list reordering.
-- [Current GPU result](emulation-gpu/valley-material-visibility.json). The harness
+- A separate native perspective-interpolated UV render matched production
+  UV reconstruction across 18,522 pixels (maximum error 0.00003815 UV units).
+- [Current GPU result](emulation-gpu/valley-uv-visibility.json). The harness
   excludes water composition and browser orchestration. The separate visual
   render covers actual Three water/sky/material shaders. Neither establishes
   phone FPS. The older paged-scene result is historical.

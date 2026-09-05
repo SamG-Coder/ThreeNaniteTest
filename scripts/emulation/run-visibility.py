@@ -22,8 +22,10 @@ bounds=[make((root/f'{i}-bounds.bin').read_bytes(),S) for i in range(2)]
 T=wgpu.TextureUsage;tex=lambda fmt,usage:d.create_texture(size=(width,height,1),format=fmt,usage=usage)
 ids=tex('r32uint',T.RENDER_ATTACHMENT|T.TEXTURE_BINDING|T.COPY_SRC);depth=tex('depth32float',T.RENDER_ATTACHMENT|T.TEXTURE_BINDING);color=tex('rgba16float',T.STORAGE_BINDING|T.COPY_SRC);outdepth=tex('r32float',T.STORAGE_BINDING|T.COPY_SRC)
 hzb=d.create_texture(size=(ps,ps,1),mip_level_count=levels,format='r32float',usage=T.STORAGE_BINDING|T.TEXTURE_BINDING)
+textured=(root/'material.bin').exists()
+bary=tex('rg32float',T.RENDER_ATTACHMENT|T.TEXTURE_BINDING) if textured else None
 module=d.create_shader_module(code=(root/'visibility.wgsl').read_text())
-render=d.create_render_pipeline(layout='auto',vertex={'module':module,'entry_point':'vertexMain','buffers':[]},fragment={'module':module,'entry_point':'fragmentMain','targets':[{'format':'r32uint'}]},primitive={'topology':'triangle-list','cull_mode':'back','front_face':'ccw'},depth_stencil={'format':'depth32float','depth_write_enabled':True,'depth_compare':'less'})
+render=d.create_render_pipeline(layout='auto',vertex={'module':module,'entry_point':'vertexMain','buffers':[]},fragment={'module':module,'entry_point':'fragmentMain','targets':[{'format':'r32uint'}]+([{'format':'rg32float'}] if textured else [])},primitive={'topology':'triangle-list','cull_mode':'back','front_face':'ccw'},depth_stencil={'format':'depth32float','depth_write_enabled':True,'depth_compare':'less'})
 compute={}
 for file,names in [('visibility',['coverage','shadeVisible']),('cull',['clearFrame','clearHistory','arguments','seed','recover']),('pyramid',['reduce']),('base',['base'])]:
  mod=d.create_shader_module(code=(root/(file+'.wgsl')).read_text())
@@ -36,12 +38,14 @@ geo={**common,13:ids.create_view(),14:depth.create_view(),15:color.create_view()
 material_bindings=[]
 if (root/'material.bin').exists():
  from PIL import Image
- material=d.create_texture(size=(1024,256,1),mip_level_count=11,format='rgba8unorm',usage=T.TEXTURE_BINDING|T.COPY_DST)
- im=Image.frombytes('RGBA',(1024,256),(root/'material.bin').read_bytes())
- for level in range(11):
-  mw,mh=max(1,1024>>level),max(1,256>>level)
-  d.queue.write_texture({'texture':material,'mip_level':level},im.resize((mw,mh),Image.Resampling.BOX).tobytes(),{'bytes_per_row':mw*4,'rows_per_image':mh},(mw,mh,1))
- geo[22]=material.create_view();geo[23]=d.create_sampler(min_filter='linear',mag_filter='linear',mipmap_filter='linear',address_mode_u='repeat',address_mode_v='repeat');material_bindings=[22,23]
+ material=d.create_texture(size=(256,256,4),mip_level_count=9,format='rgba8unorm',usage=T.TEXTURE_BINDING|T.COPY_DST)
+ raw=(root/'material.bin').read_bytes()
+ for layer in range(4):
+  im=Image.frombytes('RGBA',(256,256),raw[layer*256*256*4:(layer+1)*256*256*4])
+  for level in range(9):
+   mw=mh=max(1,256>>level)
+   d.queue.write_texture({'texture':material,'mip_level':level,'origin':(0,0,layer)},im.resize((mw,mh),Image.Resampling.BOX).tobytes(),{'bytes_per_row':mw*4,'rows_per_image':mh},(mw,mh,1))
+ geo[22]=material.create_view(dimension='2d-array');geo[23]=d.create_sampler(min_filter='linear',mag_filter='linear',mipmap_filter='linear',address_mode_u='repeat',address_mode_v='repeat');geo[24]=bary.create_view();material_bindings=[22,23,24]
 groups['coverage']=group(compute['coverage'],geo,[0,10,13,17]);groups['shadeVisible']=group(compute['shadeVisible'],geo,[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16]+material_bindings)
 drawgroups=[group(render,{**common,9:lst},[0,1,2,3,4,5,6,7,8,9]) for lst in [seed,recovery]]
 groups['base']=group(compute['base'],{0:depth.create_view(),1:hzb.create_view(base_mip_level=0,mip_level_count=1),2:bits,3:dims},[0,1,2,3])
@@ -60,7 +64,7 @@ def frame(enabled):
   cp.end()
  def draw(phase):
   if a.depth_order:dispatch('orderRecovery' if phase else 'orderSeed',indirect=True)
-  rp=e.begin_render_pass(color_attachments=[{'view':ids.create_view(),'clear_value':(0xffffffff,0,0,0),'load_op':'load' if phase else 'clear','store_op':'store'}],depth_stencil_attachment={'view':depth.create_view(),'depth_clear_value':1,'depth_load_op':'load' if phase else 'clear','depth_store_op':'store'})
+  rp=e.begin_render_pass(color_attachments=[{'view':ids.create_view(),'clear_value':(0xffffffff,0,0,0),'load_op':'load' if phase else 'clear','store_op':'store'}]+([{'view':bary.create_view(),'clear_value':(0,0,0,0),'load_op':'load' if phase else 'clear','store_op':'store'}] if textured else []),depth_stencil_attachment={'view':depth.create_view(),'depth_clear_value':1,'depth_load_op':'load' if phase else 'clear','depth_store_op':'store'})
   rp.set_pipeline(render);rp.set_bind_group(0,drawgroups[phase]);rp.draw_indirect(args,phase*16);rp.end()
  dispatch('clearFrame',(max(16,tx*ty*2)+63)//64);dispatch('arguments');dispatch('seed',indirect=True);dispatch('arguments');draw(0)
  dispatch('coverage',tx,ty);dispatch('base',(ps+7)//8,(ps+7)//8)
@@ -99,3 +103,40 @@ for i in range(a.frames):
 Path(a.output or root/'visibility-results.json').write_text(json.dumps(report,indent=2))
 
 (root/'last-color.rgba16').write_bytes(actual[3])
+
+# Independent rasterizer check: compare production barycentric UV recovery
+# against hardware perspective interpolation for the same actual draw lists.
+if (root/'material.bin').exists():
+ source=(root/'visibility.wgsl').read_text()
+ reference_source=source.replace('@location(1) bary:vec2<f32> };','@location(1) bary:vec2<f32>, @location(2) uv:vec2<f32> };',1)
+ reference_source=reference_source.replace('var p:vec4<f32>;','var p:vec4<f32>;var uv:vec2<f32>;')
+ reference_source=reference_source.replace('p=params.matrix*am[v.x]', 'uv=av[ai[v.y*192u+vi]].uv.xy;p=params.matrix*am[v.x]')
+ reference_source=reference_source.replace('p=params.matrix*bm[v.x]', 'uv=bv[bi[v.y*192u+vi]].uv.xy;p=params.matrix*bm[v.x]')
+ reference_source=reference_source.replace('corner==1u)));','corner==1u)),uv);')
+ reference_source=reference_source.replace('@fragment fn fragmentMain(input:VOut)->VisibilityOut{return VisibilityOut(input.id,input.bary);}', 'struct UVOut { @location(0) uv:vec4<f32>, @location(1) id:u32 }; @fragment fn fragmentMain(input:VOut)->UVOut{return UVOut(vec4<f32>(input.uv,0,1),input.id);}')
+ rm=d.create_shader_module(code=reference_source)
+ rpipeline=d.create_render_pipeline(layout='auto',vertex={'module':rm,'entry_point':'vertexMain'},fragment={'module':rm,'entry_point':'fragmentMain','targets':[{'format':'rgba32float'},{'format':'r32uint'}]},primitive={'topology':'triangle-list','cull_mode':'back','front_face':'ccw'},depth_stencil={'format':'depth32float','depth_write_enabled':True,'depth_compare':'less'})
+ diagnostic=source.replace('color=landscapeShade(s,vec2<f32>(g.xy)+.5);','color=vec3<f32>(surfaceUV(s,rasterWeights(vec2<f32>(g.xy)+.5)),0);').replace('texture_storage_2d<rgba16float,write>','texture_storage_2d<rgba32float,write>')
+ cm=d.create_shader_module(code=diagnostic);cpipeline=d.create_compute_pipeline(layout='auto',compute={'module':cm,'entry_point':'shadeVisible'})
+ reference_ids=tex('r32uint',T.RENDER_ATTACHMENT|T.COPY_SRC)
+ reference_uv=tex('rgba32float',T.RENDER_ATTACHMENT|T.COPY_SRC);computed_uv=tex('rgba32float',T.STORAGE_BINDING|T.COPY_SRC);ref_depth=tex('depth32float',T.RENDER_ATTACHMENT)
+ cg=group(cpipeline,{**geo,15:computed_uv.create_view()},[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16,24])
+ e=d.create_command_encoder()
+ for phase,lst in enumerate([seed,recovery]):
+  rg=group(rpipeline,{**common,9:lst},[0,1,2,3,4,5,6,7,8,9])
+  rp=e.begin_render_pass(color_attachments=[{'view':reference_uv.create_view(),'clear_value':(0,0,0,0),'load_op':'load' if phase else 'clear','store_op':'store'},{'view':reference_ids.create_view(),'clear_value':(0xffffffff,0,0,0),'load_op':'load' if phase else 'clear','store_op':'store'}],depth_stencil_attachment={'view':ref_depth.create_view(),'depth_clear_value':1,'depth_load_op':'load' if phase else 'clear','depth_store_op':'store'})
+  rp.set_pipeline(rpipeline);rp.set_bind_group(0,rg);rp.draw_indirect(args,phase*16);rp.end()
+ cp=e.begin_compute_pass();cp.set_pipeline(cpipeline);cp.set_bind_group(0,cg);cp.dispatch_workgroups(tx,ty);cp.end();d.queue.submit([e.finish()])
+ def floats(t):return struct.unpack('<'+'f'*(width*height*4),d.queue.read_texture({'texture':t},{'bytes_per_row':width*16,'rows_per_image':height},(width,height,1)))
+ ru,cu=floats(reference_uv),floats(computed_uv)
+ rid=bytes(d.queue.read_texture({'texture':reference_ids},{'bytes_per_row':width*4,'rows_per_image':height},(width,height,1)))
+ pid=bytes(d.queue.read_texture({'texture':ids},{'bytes_per_row':width*4,'rows_per_image':height},(width,height,1)))
+ ties=sum(rid[i:i+4]!=pid[i:i+4] for i in range(0,len(rid),4))
+ errors=[max(abs(ru[i]-cu[i]),abs(ru[i+1]-cu[i+1])) for i in range(0,len(ru),4) if ru[i+3]>0 and rid[i:i+4]==pid[i:i+4]]
+ report['uvInterpolation']={'comparedPixels':len(errors),'differentWinnerPixels':ties,'maxAbsoluteError':max(errors,default=0),'reference':'hardware perspective-correct UV varying; same current draw lists'}
+ print(report['uvInterpolation'],flush=True)
+ if errors and max(errors)>0.002:
+  worst=sorted([(max(abs(ru[i]-cu[i]),abs(ru[i+1]-cu[i+1])),i//4,ru[i:i+2],cu[i:i+2],struct.unpack('<I',pid[i:i+4])[0]) for i in range(0,len(ru),4) if ru[i+3]>0],reverse=True)[:8]
+  print('UV differences',worst,flush=True)
+ if not errors or max(errors)>0.002:raise RuntimeError('Visibility UV reconstruction differs from hardware interpolation')
+ Path(a.output or root/'visibility-results.json').write_text(json.dumps(report,indent=2))

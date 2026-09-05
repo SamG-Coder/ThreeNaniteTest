@@ -5,8 +5,9 @@ import { readFileSync, writeFileSync, cpSync, mkdirSync } from 'node:fs';
 import { packPage, PAGE_WORDS } from '../../src/streaming/pages.js';
 import { pagedVisibilityWGSL } from '../../src/streaming/shaders.js';
 const [input,out]=process.argv.slice(2);if(!input||!out)throw new Error('Usage: export-paged.mjs INPUT OUT');
-mkdirSync(out,{recursive:true});cpSync(input,out,{recursive:true});
 const m=JSON.parse(readFileSync(`${input}/manifest.json`));
+if((m.vertexStride??48)!==48)throw new Error('Textured landscape exports use the full-detail visibility harness; paging would discard UVs');
+mkdirSync(out,{recursive:true});cpSync(input,out,{recursive:true});
 const read=(name,Type)=>{const b=readFileSync(`${input}/${name}.bin`);return new Type(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));};
 const params=read('params',Uint32Array);
 for(let i=0;i<2;i++){

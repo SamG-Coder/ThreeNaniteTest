@@ -298,7 +298,7 @@ ordering in Epic's pipeline, not a claimed phone speedup. See the updated
 or choose **Build Willowmere Valley** under Controls. It combines a walkable lake
 shore, terrain, detailed trees, rock outcrops and dense geometric grass using the
 atomic visibility technique, with a separate alder tree model, procedural material
-textures, smooth shading and light haze. The valley defaults to full-detail geometry
+textures with preserved UVs, interpolated vertex colours, smooth shading and light haze. The valley defaults to full-detail geometry
 without distant voxel substitutions. Water adds animated waves, Fresnel sky
 reflection, shallow/deep color, sun highlights and shoreline foam.
 

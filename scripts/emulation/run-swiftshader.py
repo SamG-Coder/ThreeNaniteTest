@@ -9,6 +9,7 @@ import wgpu
 p=argparse.ArgumentParser();p.add_argument('directory');p.add_argument('--variants',default='original,owned,cached,reject');p.add_argument('--stats',type=int,default=0);p.add_argument('--empty-bounds',action='store_true');p.add_argument('--dispatch',choices=['capacity','visible','indirect','production'],default='capacity');p.add_argument('--samples',type=int,default=5);p.add_argument('--warmup',type=int,default=2);p.add_argument('--output');p.add_argument('--mode',type=int,choices=range(4),default=0);p.add_argument('--capacity',type=int,default=8388608);args=p.parse_args()
 if args.samples<1 or args.warmup<0 or args.capacity<1:p.error('samples must be positive and warmup nonnegative')
 root=Path(args.directory);manifest=json.loads((root/'manifest.json').read_text())
+if manifest.get('vertexStride',48)!=48:raise RuntimeError('Textured landscape exports require run-visibility.py; legacy raster experiments use 48-byte vertices')
 adapters=wgpu.gpu.enumerate_adapters_sync()
 if not adapters:raise RuntimeError('No software GPU adapter installed')
 adapter=next((a for a in adapters if a.info['adapter_type']=='CPU'),None)

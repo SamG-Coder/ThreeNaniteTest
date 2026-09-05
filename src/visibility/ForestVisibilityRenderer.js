@@ -31,7 +31,8 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
     this.resetHistory=true;this.groups=null;
   }
   resize(){
-    super.resize();this.hardwareDepth?.destroy();this.hzb?.destroy();
+    super.resize();this.hardwareDepth?.destroy();this.hzb?.destroy();this.barycentrics?.destroy();
+    if(this.forest.landscapeTexture)this.barycentrics=this.device.createTexture({size:[this.width,this.height],format:'rg32float',usage:GPUTextureUsage.RENDER_ATTACHMENT|GPUTextureUsage.TEXTURE_BINDING});
     this.hardwareDepth=this.device.createTexture({size:[this.width,this.height],format:'depth32float',usage:GPUTextureUsage.RENDER_ATTACHMENT|GPUTextureUsage.TEXTURE_BINDING});
     this.pyramidSize=2**Math.ceil(Math.log2(Math.max(this.width,this.height)));
     this.pyramidLevels=Math.log2(this.pyramidSize)+1;
@@ -45,7 +46,7 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
     const compilation=await module.getCompilationInfo();
     const errors=compilation.messages.filter(message=>message.type==='error');
     if(errors.length)throw new Error(errors.map(message=>`Forest visibility WGSL ${message.lineNum}:${message.linePos}: ${message.message}`).join('\n'));
-    this.visibilityPipeline=await this.device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'vertexMain'},fragment:{module,entryPoint:'fragmentMain',targets:[{format:'r32uint'}]},primitive:{topology:'triangle-list',cullMode:'back',frontFace:'ccw'},depthStencil:{format:'depth32float',depthWriteEnabled:true,depthCompare:'less'}});
+    this.visibilityPipeline=await this.device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'vertexMain'},fragment:{module,entryPoint:'fragmentMain',targets:[{format:'r32uint'},...(this.barycentrics?[{format:'rg32float'}]:[])]},primitive:{topology:'triangle-list',cullMode:'back',frontFace:'ccw'},depthStencil:{format:'depth32float',depthWriteEnabled:true,depthCompare:'less'}});
     this.compute={};
     for(const [code,names] of [[this.geometryWGSL,['coverage','shadeVisible']],[cullWGSL,['clearFrame','clearHistory','arguments','seed','recover']],[pyramidWGSL,['reduce']],[pyramidBaseWGSL,['base']]]){
       const m=this.device.createShaderModule({code});
@@ -66,8 +67,8 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
     this.groups={};
     for(const [name,ids] of Object.entries({clearFrame:[10,11,17],clearHistory:[10,17],arguments:[0,11,21],seed:[0,4,8,10,11,12,18],recover:[0,1,2,3,4,7,8,10,11,12,19,20]}))this.groups[name]=group(this.compute[name],cull,ids);
     this.groups.coverage=group(this.compute.coverage,geometry,[0,10,13,17]);
-    const materialBindings=this.materialSampler?[22,23]:[];
-    if(this.materialSampler){geometry[22]=view(this.forest.landscapeTexture);geometry[23]=this.materialSampler;}
+    const materialBindings=this.materialSampler?[22,23,24]:[];
+    if(this.materialSampler){geometry[22]=view(this.forest.landscapeTexture);geometry[23]=this.materialSampler;geometry[24]=this.barycentrics.createView();}
     this.groups.shadeVisible=group(this.compute.shadeVisible,geometry,[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16,...materialBindings]);
     this.drawGroups=[this.seedList,this.recoveryList].map(list=>group(this.visibilityPipeline,{...common,9:resource(list)},[0,1,2,3,4,5,6,7,8,9]));
     this.groups.base=group(this.compute.base,{0:this.hardwareDepth.createView(),1:this.hzb.createView({baseMipLevel:0,mipLevelCount:1}),2:resource(this.atomicBits),3:resource(this.dimensions)},[0,1,2,3]);
@@ -81,7 +82,7 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
     };
     const draw=(phase)=>{
       this.beforeVisibilityDraw?.(encoder,phase);
-      const p=encoder.beginRenderPass({label:phase?'Visibility recovery':'Visibility seed',colorAttachments:[{view:this.renderer.backend.get(this.ids).texture.createView(),clearValue:{r:0xffffffff,g:0,b:0,a:0},loadOp:phase?'load':'clear',storeOp:'store'}],depthStencilAttachment:{view:this.hardwareDepth.createView(),depthClearValue:1,depthLoadOp:phase?'load':'clear',depthStoreOp:'store'}});
+      const p=encoder.beginRenderPass({label:phase?'Visibility recovery':'Visibility seed',colorAttachments:[{view:this.renderer.backend.get(this.ids).texture.createView(),clearValue:{r:0xffffffff,g:0,b:0,a:0},loadOp:phase?'load':'clear',storeOp:'store'},...(this.barycentrics?[{view:this.barycentrics.createView(),clearValue:{r:0,g:0,b:0,a:0},loadOp:phase?'load':'clear',storeOp:'store'}]:[])],depthStencilAttachment:{view:this.hardwareDepth.createView(),depthClearValue:1,depthLoadOp:phase?'load':'clear',depthStoreOp:'store'}});
       p.setPipeline(this.visibilityPipeline);p.setBindGroup(0,this.drawGroups[phase]);p.drawIndirect(this.argumentsBuffer,phase*16);p.end();
     };
     const mark=index=>{if(this.probe.active){const p=encoder.beginComputePass({timestampWrites:{querySet:this.probe.queries,beginningOfPassWriteIndex:index}});p.end();}};
@@ -109,5 +110,5 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
     super.updateReadout();
     if(this.readout)this.readout.textContent=this.readout.textContent.replace('Binning','Visibility + HZB').replace('Raster','Final shading');
   }
-  dispose(){this.hardwareDepth?.destroy();this.hzb?.destroy();super.dispose();}
+  dispose(){this.barycentrics?.destroy();this.hardwareDepth?.destroy();this.hzb?.destroy();super.dispose();}
 }

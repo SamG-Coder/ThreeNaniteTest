@@ -1,3 +1,4 @@
+import {packVisibilityVertices} from '../../src/visibility/vertices.js';
 import {landscapeVisibilityWGSL} from '../../src/visibility/landscapeShaders.js';
 import {createLandscapeTexture} from '../../src/landscapeMaterials.js';
 import {visibilityWGSL,cullWGSL,pyramidWGSL,pyramidBaseWGSL} from '../../src/visibility/shaders.js';
@@ -16,8 +17,8 @@ const {assets,matrices,selected,vp,camera,world}=s.gpu;
 const save=(name,data)=>writeFileSync(`${out}/${name}.bin`,new Uint8Array(data.buffer,data.byteOffset,data.byteLength));
 for(let a=0;a<2;a++){
  const asset=assets[a],colors=asset.sourceColors??(a?world.treeGeometry:world.geometry).attributes.color;
- const vertices=new Float32Array(asset.vertexCount*12);
- for(let i=0;i<asset.vertexCount;i++){vertices.set(asset.vertices.subarray(i*4,i*4+4),i*12);vertices.set(asset.normals.subarray(i*4,i*4+4),i*12+4);if(world.landscape&&!s.gpu.assets[1].voxelRoot)vertices[i*12+7]=(a?world.treeGeometry:world.geometry).attributes.surface.getX(i);vertices.set([colors.getX(i),colors.getY(i),colors.getZ(i),asset.coverage?.[i]??1],i*12+8);}
+ const surface=world.landscape && flags.voxels!=='true'?(a?world.treeGeometry:world.geometry).attributes.surface:null;
+ const vertices=packVisibilityVertices(asset,colors,surface);
  const indices=new Uint32Array(asset.indices.length+asset.clusterLod.length);indices.set(asset.indices);indices.set(asset.clusterLod,asset.indices.length);
  save(`${a}-bounds`,asset.clusterBounds);
  save(`${a}-vertices`,vertices);save(`${a}-indices`,indices);save(`${a}-matrices`,Float32Array.from(matrices[a].flatMap(m=>m.elements)));
@@ -27,7 +28,7 @@ const params=new ArrayBuffer(128),f=new Float32Array(params),u=new Uint32Array(p
 const capacity=s.geometry==='full'?assets.map((a,i)=>a.lods[0].clusterCount*(i?world.treeInstances.length/4:1)):[8192,32768];
 u.set([...capacity,...assets.map(a=>a.indices.length)],24);u.set([8388608,0,0,Math.min(65535,capacity[0]+capacity[1])],28);save('params',new Uint8Array(params));
 for(const [variant,code] of Object.entries({fast:forestFastWGSL,bounded:forestBoundedWGSL,original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL,reject:forestRejectWGSL}))writeFileSync(`${out}/${variant}.wgsl`,code);
-writeFileSync(`${out}/manifest.json`,JSON.stringify({width:s.width,height:s.height,scene:flags.scene??'forest',grassClumps:world.grassClumps??0,clusterCounts:assets.map(a=>a.totalClusters),instanceCounts:[1,world.treeInstances.length/4],counts:s.counts,sourceTriangles:s.sourceTriangles,capacity,geometry:s.geometry,density:s.density,voxels:flags.voxels==='true',voxelCells:assets[1].voxelCells??0,cpuTimingsMs:s.cpuTimingsMs,camera:s.camera,selection:'CPU equivalent of cull, deterministic slot order'},null,2));
+writeFileSync(`${out}/manifest.json`,JSON.stringify({width:s.width,height:s.height,vertexStride:world.landscape&&flags.voxels!=='true'?64:48,scene:flags.scene??'forest',grassClumps:world.grassClumps??0,clusterCounts:assets.map(a=>a.totalClusters),instanceCounts:[1,world.treeInstances.length/4],counts:s.counts,sourceTriangles:s.sourceTriangles,capacity,geometry:s.geometry,density:s.density,voxels:flags.voxels==='true',voxelCells:assets[1].voxelCells??0,cpuTimingsMs:s.cpuTimingsMs,camera:s.camera,selection:'CPU equivalent of cull, deterministic slot order'},null,2));
 console.log('Exported actual forest GPU buffers',out,s.counts);
 
 writeFileSync(`${out}/dispatch.wgsl`,forestDispatchWGSL);
