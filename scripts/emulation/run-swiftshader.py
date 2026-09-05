@@ -6,7 +6,7 @@ without changing arithmetic, ordering, source records or any raster entrypoint.
 import argparse, hashlib, json, re, struct, time
 from pathlib import Path
 import wgpu
-p=argparse.ArgumentParser();p.add_argument('directory');p.add_argument('--variants',default='original,owned,cached,reject');p.add_argument('--stats',type=int,default=0);p.add_argument('--empty-bounds',action='store_true');p.add_argument('--dispatch',choices=['capacity','visible'],default='capacity');args=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('directory');p.add_argument('--variants',default='original,owned,cached,reject');p.add_argument('--stats',type=int,default=0);p.add_argument('--empty-bounds',action='store_true');p.add_argument('--dispatch',choices=['capacity','visible','indirect'],default='capacity');args=p.parse_args()
 root=Path(args.directory);manifest=json.loads((root/'manifest.json').read_text())
 adapters=wgpu.gpu.enumerate_adapters_sync()
 if not adapters:raise RuntimeError('No software GPU adapter installed')
@@ -35,7 +35,7 @@ for variant in args.variants.split(','):
  pipelines={name:device.create_compute_pipeline(layout='auto',compute={'module':module,'entry_point':name}) for name in ['clear','bin','raster']}
  print('Compiled in',round(time.monotonic()-start,2),'seconds',flush=True)
  params=bytearray((root/'params.bin').read_bytes());struct.pack_into('<I',params,120,args.stats)
- total=sum(manifest['capacity']) if args.dispatch=='capacity' else sum(counts);dispatch_width=min(total,65535);struct.pack_into('<I',params,124,dispatch_width)
+ total=sum(manifest['capacity']) if args.dispatch in ['capacity','indirect'] else sum(counts);dispatch_width=min(total,65535);struct.pack_into('<I',params,124,dispatch_width)
  uniform=make(params,wgpu.BufferUsage.UNIFORM);control=make(struct.pack('<16I',*counts,*([0]*14)),S|COPY)
  heads=device.create_buffer(size=tx*ty*(36 if variant=='reject' else 8),usage=S);entries=device.create_buffer(size=8388608*8,usage=S)
  textures=[device.create_texture(size=(width,height,1),format=f,usage=wgpu.TextureUsage.STORAGE_BINDING|wgpu.TextureUsage.COPY_SRC) for f in ['r32float','r32uint','rgba16float']]
@@ -45,12 +45,21 @@ for variant in args.variants.split(','):
   specs=[{'binding':i,'resource':{'buffer':bindings[i]}} for i in selected]
   if name=='raster':specs += [{'binding':12+i,'resource':t.create_view()} for i,t in enumerate(textures)]
   groups[name]=device.create_bind_group(layout=pipelines[name].get_bind_group_layout(0),entries=specs)
+ indirect=None
+ if args.dispatch=='indirect':
+  indirect=device.create_buffer(size=12,usage=S|wgpu.BufferUsage.INDIRECT|wgpu.BufferUsage.COPY_SRC)
+  dispatch_module=device.create_shader_module(code=(root/'dispatch.wgsl').read_text())
+  dispatch_pipeline=device.create_compute_pipeline(layout='auto',compute={'module':dispatch_module,'entry_point':'prepareDispatch'})
+  dispatch_group=device.create_bind_group(layout=dispatch_pipeline.get_bind_group_layout(0),entries=[{'binding':i,'resource':{'buffer':b}} for i,b in enumerate([uniform,control,indirect])])
  elapsed=[]
  for iteration in range(2):
   encoder=device.create_command_encoder()
   for i,name in enumerate(pipelines):
+   if name=='bin' and indirect is not None:
+    prep=encoder.begin_compute_pass();prep.set_pipeline(dispatch_pipeline);prep.set_bind_group(0,dispatch_group);prep.dispatch_workgroups(1);prep.end()
    cp=encoder.begin_compute_pass(timestamp_writes={'query_set':query,'beginning_of_pass_write_index':2*i,'end_of_pass_write_index':2*i+1});cp.set_pipeline(pipelines[name]);cp.set_bind_group(0,groups[name])
    if name=='clear':cp.dispatch_workgroups((max(16,tx*ty)+63)//64)
+   elif name=='bin' and indirect is not None:cp.dispatch_workgroups_indirect(indirect,0)
    elif name=='bin':cp.dispatch_workgroups(dispatch_width,(total+dispatch_width-1)//dispatch_width)
    else:cp.dispatch_workgroups(tx,ty)
    cp.end()
@@ -63,9 +72,11 @@ for variant in args.variants.split(','):
  depth_a=struct.unpack('<'+'f'*(width*height),baseline[0]);depth_b=struct.unpack('<'+'f'*(width*height),depth)
  result={'variant':variant,'sourceSHA256':original_hash,'timings':elapsed,'depthMaxDifference':max(abs(a-b) for a,b in zip(depth_a,depth_b)),'idMismatches':sum(baseline[1][i:i+4]!=ids[i:i+4] for i in range(0,len(ids),4)),'counters':struct.unpack('<16I',device.queue.read_buffer(control)), 'checksum':hashlib.sha256(depth+ids).hexdigest()}
  baseline_path=root/'swiftshader-capacity-stats0.json'
- if (args.dispatch=='visible' or args.empty_bounds) and baseline_path.exists():
+ if (args.dispatch in ['visible','indirect'] or args.empty_bounds) and baseline_path.exists():
   reference=json.loads(baseline_path.read_text())['runs'][0]['checksum'];result['matchesCapacityChecksum']=result['checksum']==reference
  report['runs'].append(result);(root/(f'swiftshader-{args.dispatch}-stats{args.stats}'+('-empty' if args.empty_bounds else '')+'.json')).write_text(json.dumps(report,indent=2));print(result,flush=True)
  if result['idMismatches'] or result['depthMaxDifference']!=0 or result.get('matchesCapacityChecksum') is False:raise RuntimeError('Software shader visibility mismatch')
+ if indirect is not None:
+  print('GPU dispatch arguments:',struct.unpack('<3I',device.queue.read_buffer(indirect)),flush=True);indirect.destroy()
  for b in [uniform,control,heads,entries]:b.destroy()
  for t in textures:t.destroy()

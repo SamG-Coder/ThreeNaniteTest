@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { Discard, Fn, If, screenCoordinate, textureLoad, uint } from 'three/tsl';
+import { forestBoundedWGSL, forestDispatchWGSL } from './forestBoundedShaders.js';
 import { forestRasterWGSL } from './forestShaders.js';
 import { forestReferenceWGSL } from './forestReferenceShaders.js';
 import { forestOwnedMaskWGSL } from './forestOwnedMaskShaders.js';
@@ -11,12 +12,12 @@ import { FrameGate, FrameProbe, frameOptions } from './FrameExperiment.js';
 // Geometry visibility and color are computed here; Three presents the output
 // and renders the ordinary sky/lake against the computed forest depth.
 export class ForestBitmaskRenderer {
-  constructor(forest) {
+  constructor(forest, variant) {
     this.forest=forest;this.renderer=forest.terrain.renderer;this.camera=forest.terrain.camera;
     this.device=this.renderer.backend.device;this.outputMode='shaded';this.disposed=false;
     this.lastReadback=-Infinity;this.reading=false;this.generation=0;
     this.metrics=null;this.buffers=[];
-    this.variant=rasterVariant(globalThis.location?.search??'');
+    this.variant=variant??rasterVariant(globalThis.location?.search??'');
     this.options=frameOptions(globalThis.location?.search??'');this.gate=new FrameGate(this.options.frames);
     this.probe=new FrameProbe(this.device);this.intervals=[];this.lastSubmit=null;this.cpuMs=0;
     this.selectionNodes=null;
@@ -24,6 +25,7 @@ export class ForestBitmaskRenderer {
     this.uniform=this.makeBuffer(128,GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST);
     this.control=this.makeBuffer(64,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);
     this.readback=this.makeBuffer(64,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
+    if(this.variant==='bounded')this.dispatchArgs=this.makeBuffer(12,GPUBufferUsage.STORAGE|GPUBufferUsage.INDIRECT);
     this.assets=forest.pipelines.map(p=>{
       const vertices=new Float32Array(p.asset.vertexCount*12);
       for(let i=0;i<p.asset.vertexCount;i++){
@@ -87,10 +89,15 @@ export class ForestBitmaskRenderer {
     if(data)this.device.queue.writeBuffer(b,0,data);return b;
   }
   async init(){
-    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:{reject:forestRejectWGSL,original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL}[this.variant]});
+    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:{bounded:forestBoundedWGSL,reject:forestRejectWGSL,original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL}[this.variant]});
     const info=await module.getCompilationInfo();
     const errors=info.messages.filter(m=>m.type==='error');
     if(errors.length)throw new Error(errors.map(e=>`Forest WGSL ${e.lineNum}: ${e.message}`).join('\n'));
+    if(this.dispatchArgs){
+      const dispatchModule=this.device.createShaderModule({label:'Visible cluster dispatch',code:forestDispatchWGSL});
+      this.dispatchPipeline=await this.device.createComputePipelineAsync({layout:'auto',compute:{module:dispatchModule,entryPoint:'prepareDispatch'}});
+      this.dispatchGroup=this.device.createBindGroup({layout:this.dispatchPipeline.getBindGroupLayout(0),entries:[this.uniform,this.control,this.dispatchArgs].map((buffer,binding)=>({binding,resource:{buffer}}))});
+    }
     this.pipelines={};
     for(const entryPoint of ['clear','bin','raster'])this.pipelines[entryPoint]=await this.device.createComputePipelineAsync({
       label:`Forest bitmask ${entryPoint}`,layout:'auto',compute:{module,entryPoint}
@@ -167,10 +174,16 @@ export class ForestBitmaskRenderer {
     encoder.copyBufferToBuffer(this.sharedBuffer(a.visibleCountAttribute),0,this.control,0,4);
     encoder.copyBufferToBuffer(this.sharedBuffer(b.visibleCountAttribute),0,this.control,4,4);
     for(const name of ['clear','bin','raster']){
+      if(name==='bin'&&this.dispatchArgs){
+        const prepare=encoder.beginComputePass({label:'Visible cluster dispatch'});
+        prepare.setPipeline(this.dispatchPipeline);prepare.setBindGroup(0,this.dispatchGroup);
+        prepare.dispatchWorkgroups(1);prepare.end();
+      }
       const pass=encoder.beginComputePass({label:`Forest bitmask ${name}`,timestampWrites:name==='bin'?this.probe.writes(2):name==='raster'?this.probe.writes(4):undefined});
       pass.setPipeline(this.pipelines[name]);pass.setBindGroup(0,this.groups[name]);
       if(name==='raster')pass.dispatchWorkgroups(this.tilesX,this.tilesY);
       else if(name==='clear')pass.dispatchWorkgroups(Math.ceil(Math.max(8,this.tilesX*this.tilesY)/64));
+      else if(this.dispatchArgs)pass.dispatchWorkgroupsIndirect(this.dispatchArgs,0);
       else {const count=a.maxVisibleClusters+b.maxVisibleClusters;const width=Math.min(count,this.device.limits.maxComputeWorkgroupsPerDimension);pass.dispatchWorkgroups(width,Math.ceil(count/width));}
       pass.end();
     }

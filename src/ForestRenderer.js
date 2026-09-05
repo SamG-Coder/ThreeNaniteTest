@@ -46,7 +46,7 @@ export class ForestRenderer {
     this.water.position.set(0,.1,-9); scene.add(this.water);
     // A small physical roughness stops the lake becoming a mirror without IBL.
     waterMaterial.roughnessNode=float(.23);
-    if(options.bitmask)this.bitmask=new ForestBitmaskRenderer(this);
+    if(options.bitmask)this.bitmask=new ForestBitmaskRenderer(this,options.bitmaskVariant);
   }
   async initBitmask() { if(this.bitmask)await this.bitmask.init(); }
   render(now) {

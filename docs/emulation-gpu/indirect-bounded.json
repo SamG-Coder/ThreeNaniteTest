@@ -1,0 +1,99 @@
+{
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 160,
+    "height": 288,
+    "counts": {
+      "groupsVisited": 8320,
+      "groupsRejected": 7364,
+      "meshletsTested": 51272,
+      "frustumRejected": 7578,
+      "coneRejected": 704,
+      "actualTriangles": 2718723,
+      "paddedTriangleSlots": 2751360,
+      "asset0": 1124,
+      "asset1": 41866,
+      "binDispatchInvocations": 29359680,
+      "idleBinInvocations": 26608320
+    },
+    "sourceTriangles": 28172160,
+    "capacity": [
+      6713,
+      439808
+    ],
+    "geometry": "full",
+    "density": "high",
+    "camera": {
+      "position": [
+        0,
+        4.1146040622323286,
+        62
+      ],
+      "pitch": -0.05,
+      "yaw": 0,
+      "fov": 50
+    },
+    "selection": "CPU equivalent of cull, deterministic slot order"
+  },
+  "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+  "stats": 0,
+  "dispatch": "indirect",
+  "emptyBoundsExperiment": false,
+  "runs": [
+    {
+      "variant": "bounded",
+      "sourceSHA256": "e0fcef3aa8155095d1e1a37b5075755a7f8cd557718c6a7fe7b407082aa50a96",
+      "timings": [
+        {
+          "wallSeconds": 1.39407596700039,
+          "stagesMs": [
+            0.260396,
+            653.326528,
+            241.462686
+          ]
+        },
+        {
+          "wallSeconds": 0.7803328680020059,
+          "stagesMs": [
+            0.151449,
+            513.017644,
+            266.504199
+          ]
+        }
+      ],
+      "depthMaxDifference": 0.0,
+      "idMismatches": 0,
+      "counters": [
+        1124,
+        41866,
+        213768,
+        0,
+        43148,
+        7092,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": "e684cb911211e8dd184928e033327505cb6bbfee641050622a42c7da509f1a72",
+      "matchesCapacityChecksum": true
+    }
+  ]
+}

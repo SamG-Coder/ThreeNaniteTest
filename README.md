@@ -242,3 +242,13 @@ Both dependencies are installed through npm and retain their own licences.
 `npm test` checks exact full-resolution triangle coverage and winding, unchanged boundary edges at every group LOD, valid indices and enclosing group bounds, monotonic error/counts, deterministic builds, malformed input rejection, and WebGPU near-plane frustum extraction.
 
 The production build, CPU tests and offline TSL-to-WGSL generation were run in the hosted workspace. Physical-device shader validation and visual WebGPU behavior remain unverified; the available test browser has no WebGPU. These tests do not establish rendering performance or general crack-free behavior for arbitrary malformed/non-manifold imports.
+
+### Visible dispatch + pixel bounds (main forest)
+
+In the main forest's **Rasterizer** dropdown, select **Bitmask · visible dispatch + pixel bounds**. Keep **Full resolution** selected to compare original geometry without LOD. Switch to **Bitmask compute · forest** for the previous algorithm or **Hardware** for normal GPU rasterization. Geometry settings remain independent.
+
+[Open the full-detail comparison](https://samg-coder.github.io/ThreeNaniteTest/?geometry=full&bitmaskVariant=bounded).
+
+This variant generates indirect bin dispatch arguments from GPU-visible cluster counts without a CPU readback. It also skips projected triangle bounds that contain no pixel centres before allocating tile entries. Coverage, depth and shading use the original bitmask algorithm. This is not Nanite or geometry streaming.
+
+The production shaders match the original depth/ID checksum on the exported forest in SwiftShader; see [measured result](docs/emulation-gpu/indirect-bounded.json). Software-adapter timings do not predict phone FPS.

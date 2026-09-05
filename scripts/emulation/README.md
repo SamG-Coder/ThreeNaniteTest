@@ -23,3 +23,12 @@ npm install --prefix /tmp/forest-gpu-tools @sparticuz/chromium@149.0.0
 ```
 
 The package contains `bin/swiftshader.tar.br`. Decompress with Node's `brotliDecompressSync` and extract with `tar --no-same-owner` into a local directory. Set `VK_ICD_FILENAMES` to that directory's `vk_swiftshader_icd.json`. Install Python `wgpu==0.32.0` in your preferred environment. No Chromium launch is required. The usual Chromium helper also extracts fonts and may attempt ownership changes; this harness only needs the driver archive. Do not infer a phone GPU's properties from this CPU adapter.
+
+The main-forest `bounded` variant now uses GPU-generated indirect dispatch. Export the current shaders/buffers as above, then run with the software ICD environment:
+
+```sh
+python scripts/emulation/check-dispatch.py /tmp/forest-gpu/dispatch.wgsl
+python scripts/emulation/run-swiftshader.py /tmp/forest-gpu --variants=bounded --dispatch=indirect
+```
+
+The first command executes six production argument-generation cases (including empty, clamped and multirow counts). The second executes the production bounds rejection and indirect bin pass, comparing depth/IDs against an existing capacity baseline when present.

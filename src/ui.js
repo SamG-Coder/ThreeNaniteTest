@@ -144,7 +144,7 @@ export class DemoUI {
 
   bindPipeline(pipeline) {
     this.pipeline = pipeline;
-    pipeline.setNaniteEnabled(this.elements.renderMode.value !== 'full'||this.elements.rasterizerMode.value==='bitmask');
+    pipeline.setNaniteEnabled(this.elements.renderMode.value !== 'full'||this.elements.rasterizerMode.value.startsWith('bitmask'));
     this.syncRendererControls();
     pipeline.setLodThreshold(Number(this.elements.lodThreshold.value));
     pipeline.setOcclusionEnabled(this.elements.occlusionEnabled.checked);
@@ -163,8 +163,7 @@ export class DemoUI {
   }
 
   setGameScene(enabled, forest = false) {
-    const bitmaskOption=this.elements.rasterizerMode.querySelector('[value="bitmask"]');
-    bitmaskOption.disabled=!forest;bitmaskOption.hidden=!forest;
+    for(const option of this.elements.rasterizerMode.options)if(option.value.startsWith('bitmask')){option.disabled=!forest;option.hidden=!forest;}
     this.elements.occlusionEnabled.closest('label').hidden = forest;
     if (forest) this.elements.occlusionEnabled.checked = false;
     this.elements.gameHud.hidden = !enabled;
@@ -183,7 +182,7 @@ export class DemoUI {
   }
 
   syncRendererControls() {
-    const enabled = this.elements.renderMode.value !== 'full'||this.elements.rasterizerMode.value==='bitmask';
+    const enabled = this.elements.renderMode.value !== 'full'||this.elements.rasterizerMode.value.startsWith('bitmask');
     const visualizing = enabled && this.elements.geometryView.checked;
     this.elements.geometryView.disabled = !enabled;
     this.elements.outputMode.disabled = !visualizing;
@@ -194,7 +193,7 @@ export class DemoUI {
     this.pipeline?.setOutputMode(mode);
     const label = visualizing ? this.elements.outputMode.selectedOptions[0].text : 'shaded';
     this.elements.lodThreshold.disabled=this.elements.renderMode.value==='full';
-    this.elements.modeDescription.textContent = `${this.elements.renderMode.selectedOptions[0].text} · ${this.elements.rasterizerMode.value==='bitmask'?'Bitmask compute':'Hardware'} · ${label}`;
+    this.elements.modeDescription.textContent = `${this.elements.renderMode.selectedOptions[0].text} · ${this.elements.rasterizerMode.value.startsWith('bitmask')?'Bitmask compute':'Hardware'} · ${label}`;
     this.elements.lodBars.hidden = !enabled;
   }
 

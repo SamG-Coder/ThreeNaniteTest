@@ -61,3 +61,9 @@ Raw replays: [spawn](emulation-spawn/report.json), [canopy](emulation-canopy/rep
 4. Re-measure on the phone before choosing a mask algorithm or adding more culling. Repeated setup/normal/shading fetches are next candidates only after the two large avoidable costs are removed.
 
 Reproduce with [the harness instructions](../scripts/emulation/README.md), `npm run emulate -- --pitch=-.05`, and the optional SwiftShader runner. Driver binaries and large source-buffer exports are not committed; the deterministic exporter regenerates them.
+
+## Production integration: selectable bounded variant
+
+The main forest now offers **Bitmask · visible dispatch + pixel bounds** independently of geometry LOD. Original variants remain available. `forestBoundedShaders.js` retains reference rasterization and adds the empty pixel-centre bounds test in binning. A separate compute pass reads the GPU-visible counts and writes a dedicated STORAGE|INDIRECT buffer; the bin pass consumes it with `dispatchWorkgroupsIndirect`. No CPU count readback or additional scene render is introduced.
+
+Actual production shader execution in SwiftShader: 42,990 dispatched workgroups, 213,768 entries, 7,092 batches, no overflow. Measured second iteration: bin 513.02 ms, raster 266.50 ms; frame wall time 780.33 ms. Depth/ID SHA256 remains `e684cb911211e8dd184928e033327505cb6bbfee641050622a42c7da509f1a72`. These are software-adapter results, not browser or phone FPS. See `emulation-gpu/indirect-bounded.json` and `scripts/emulation/check-dispatch.py` for the production argument-generation boundary checks.
