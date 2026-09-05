@@ -2,6 +2,8 @@ import * as THREE from 'three/webgpu';
 import { Discard, Fn, If, screenCoordinate, textureLoad, uint } from 'three/tsl';
 import { forestRasterWGSL } from './forestShaders.js';
 import { forestReferenceWGSL } from './forestReferenceShaders.js';
+import { forestOwnedMaskWGSL } from './forestOwnedMaskShaders.js';
+import { rasterVariant, rasterVariantLabels } from './variant.js';
 
 // Uses the pinned Three 0.185.1 backend to share GPU-selected meshlet lists.
 // Geometry visibility and color are computed here; Three presents the output
@@ -12,7 +14,7 @@ export class ForestBitmaskRenderer {
     this.device=this.renderer.backend.device;this.outputMode='shaded';this.disposed=false;
     this.lastReadback=-Infinity;this.reading=false;this.busy=false;this.generation=0;
     this.metrics=null;this.buffers=[];
-    this.reference=new URLSearchParams(globalThis.location?.search??'').get('bitmaskReference')==='1';
+    this.variant=rasterVariant(globalThis.location?.search??'');
     this.uniformBytes=new ArrayBuffer(128);
     this.uniform=this.makeBuffer(128,GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST);
     this.control=this.makeBuffer(32,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);
@@ -36,7 +38,7 @@ export class ForestBitmaskRenderer {
     if(data)this.device.queue.writeBuffer(b,0,data);return b;
   }
   async init(){
-    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:this.reference?forestReferenceWGSL:forestRasterWGSL});
+    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:{original:forestReferenceWGSL,owned:forestOwnedMaskWGSL,cached:forestRasterWGSL}[this.variant]});
     const info=await module.getCompilationInfo();
     const errors=info.messages.filter(m=>m.type==='error');
     if(errors.length)throw new Error(errors.map(e=>`Forest WGSL ${e.lineNum}: ${e.message}`).join('\n'));
@@ -142,7 +144,7 @@ export class ForestBitmaskRenderer {
     this.readback.mapAsync(GPUMapMode.READ).then(()=>{
       const counters=new Uint32Array(this.readback.getMappedRange()).slice();this.readback.unmap();
       if(!this.disposed&&generation===this.generation)this.metrics={
-        reference:this.reference,entries:Math.min(counters[2],this.entryCapacity),capacity:this.entryCapacity,
+        variant:rasterVariantLabels[this.variant],entries:Math.min(counters[2],this.entryCapacity),capacity:this.entryCapacity,
         overflowTiles:counters[3],covered:counters[4],batches:counters[5],width:this.width,height:this.height
       };
     }).catch(error=>{if(!this.disposed)console.warn('Forest bitmask statistics unavailable:',error);})

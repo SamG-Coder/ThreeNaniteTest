@@ -332,7 +332,7 @@ async function initialise() {
   };
 
   // Comparison links start in the same forest, camera and raster mode.
-  if(new URLSearchParams(location.search).has('bitmaskReference'))ui.elements.renderMode.value='bitmask';
+  if(['bitmaskReference','bitmaskVariant'].some(key=>new URLSearchParams(location.search).has(key)))ui.elements.renderMode.value='bitmask';
   await ui.onForest();
 }
 

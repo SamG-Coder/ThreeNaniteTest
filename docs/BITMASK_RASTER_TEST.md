@@ -71,10 +71,26 @@ Additional tests cover near-plane intersections (including exact endpoints), bat
 
 ### First forest optimisation pass
 
-The default shader now caches covered sample depths in an 8 KiB workgroup array. Each triangle invocation writes its own sample slots; only mask-marked slots are read after the barrier. This removes the second edge/depth evaluation during mask resolution. A further 256-byte array publishes each pixel's winning depth from previous batches, so samples already proven hidden skip cache writes, mask atomics and resolution. Equal depths remain eligible for deterministic ID ties.
+The first optimisation experiment caches covered sample depths in an 8 KiB workgroup array. Each triangle invocation writes its own sample slots; only mask-marked slots are read after the barrier. This removes the second edge/depth evaluation during mask resolution. A further 256-byte array publishes each pixel's winning depth from previous batches, so samples already proven hidden skip cache writes, mask atomics and resolution. Equal depths remain eligible for deterministic ID ties.
 
 Lighting runs once for each final covered pixel, after all batches. Triangles entirely in front of the near plane bypass the clipping loop. Global covered-pixel and batch counters are aggregated per tile and updated only on asynchronous statistics sampling frames (at most twice per second). Overflow accounting remains active every frame. Total raster workgroup storage is about 12.2 KiB, below 16 KiB; higher shared-memory use can reduce occupancy on some GPUs, so speed must be measured on the target device.
 
 The original forest WGSL is retained as `forestReferenceShaders.js`. Open `?bitmaskReference=0` for the optimised path or `?bitmaskReference=1` for the original shader. Both links start in the forest's Bitmask Raster mode with the same initial camera and device-selected density/resolution. The geometry readout identifies the variant after the first statistics readback. Use matching controls and allow asset building to finish before comparing FPS; alternate runs to account for phone heating. Neither path changes LOD thresholds, source geometry, viewport resolution, software overflow fallback or the one-frame queue limit.
 
 The user reported approximately 30 FPS on a phone before this pass. No post-change device speedup is claimed. CPU regression tests compare cached resolution against exhaustive resolution across multiple batches, reversed candidate order, depth ties, shared edges, uncovered pixels and stale cache slots; both WGSL variants pass Naga parsing/emission. These tests do not replace device shader validation or visual comparison.
+
+
+### Second experiment: triangle-owned coverage masks
+
+Device feedback: the original shader ran approximately twice as fast as the first optimisation experiment. That is a regression; the original is restored as the default. Increased workgroup memory (about 12.2 KiB vs 3.9 KiB) and retained winner data are plausible contributors, but the individual causes have not been GPU-profiled.
+
+`?bitmaskVariant=owned` selects a different calculation path, based on the original shader rather than the cache experiment:
+
+1. Each triangle invocation calculates coverage and packs the tile's 64 pixel bits into two private u32 words.
+2. Each invocation publishes those two words once to its own workgroup slot. Triangle setup and coverage happen in the same invocation, eliminating one workgroup barrier per batch. Coverage needs no atomic OR and no pixel-mask clearing.
+3. After a barrier, pixel invocations read the corresponding bit from each active triangle's mask and assemble a private 32-bit candidate mask.
+4. Pixel owners use the original depth interpolation, depth-range rejection, tie handling and shading code to resolve candidates. The coverage pass omits depth interpolation; it may conservatively mark a sample beyond the far plane, which the resolve pass rejects.
+
+This restores roughly 3.9 KiB workgroup storage, with no sample-depth cache or retained final-winner triangle. Bin lists, near-plane clipping, overflow scans, statistics, source assets, LOD and resolution use the original behavior. The trade-off is up to 32 shared mask-word reads per pixel per batch. Removing atomics and redundant interpolation may help, but these extra reads may still lose on some GPUs. No faster FPS is claimed until measured.
+
+Use `?bitmaskVariant=original` and `?bitmaskVariant=owned` for matching initial forest/camera comparisons. `?bitmaskVariant=cached` preserves the first experiment, and the old `bitmaskReference=0/1` URLs retain their meaning. The readout names the active variant. Tests cover mask transposition over both 32-bit words, stale slots after a partial batch, ties, far-depth rejection and reversed candidate orders. Naga parses/emits all three shaders. Device execution and performance of the new shader remain unverified here.
