@@ -505,3 +505,7 @@ input[type="range"] { min-height: 44px; }
   .quick-controls { gap: 4px 8px; }
   .quick-controls button { padding: 0 8px; }
 }
+
+.geometry-readout { flex-basis: 100%; color: #becbb2; font-size: .75rem; font-variant-numeric: tabular-nums; }
+
+.geometry-readout.capacity-error { color: #ffb979; }

@@ -6,7 +6,7 @@ import { FrameMeter } from '../src/frameMeter.js';
 import { GameControls } from '../src/gameControls.js';
 
 test('terrain scene has valid indexed geometry, vertex colors and a clear spawn', () => {
-  const world = createGameScene(true);
+  const world = createGameScene(true, 'compact');
   const g=world.geometry;
   assert.equal(g.attributes.color.count,g.attributes.position.count);
   assert.equal(g.attributes.normal.count,g.attributes.position.count);

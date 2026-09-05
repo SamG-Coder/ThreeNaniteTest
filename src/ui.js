@@ -20,6 +20,8 @@ export class DemoUI {
     this.elements = {
       statusPill: document.querySelector('#status-pill'),
       fpsValue: document.querySelector('#fps-value'),
+      geometryDensity: document.querySelector('#geometry-density'),
+      geometryReadout: document.querySelector('#geometry-readout'),
       frameMs: document.querySelector('#frame-ms'),
       terrainSample: document.querySelector('#terrain-sample'),
       navigationMode: document.querySelector('#navigation-mode'),
@@ -84,6 +86,7 @@ export class DemoUI {
       this.elements.visibleMeshlets.textContent = '—';
       this.elements.submittedTriangles.textContent = '—';
       this.elements.capacity.textContent = '—';
+      this.elements.geometryReadout.textContent = 'Measuring geometry…';
       this.elements.overflowWarning.classList.add('hidden');
       this.syncRendererControls();
       this.onRenderModeChange?.();
@@ -244,6 +247,14 @@ export class DemoUI {
   }
 
   updateStats(stats) {
+    const submitted = compactFormatter.format(stats.submittedTriangles);
+    const source = compactFormatter.format(stats.sourceSceneTriangles);
+    const reduction = Math.max(0, 100 * (1 - stats.submittedTriangles / Math.max(1, stats.sourceSceneTriangles)));
+    this.elements.geometryReadout.textContent = stats.overflowed
+      ? 'Meshlet capacity exceeded · some geometry was dropped'
+      : `${submitted} submitted / ${source} source · ${reduction.toFixed(0)}% fewer`;
+    this.elements.geometryReadout.classList.toggle('capacity-error', Boolean(stats.overflowed));
+    this.elements.geometryReadout.title = 'Nanite submission counts include padded meshlet triangles. Fewer submitted triangles does not guarantee higher FPS.';
     this.elements.sourceTriangles.textContent = numberFormatter.format(
       stats.sourceTriangles
     );

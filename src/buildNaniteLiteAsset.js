@@ -354,18 +354,35 @@ export async function buildNaniteLiteAsset(inputGeometry, options = {}) {
   );
   const parts = [];
   const groupBounds = new Float32Array(groups.length * 4);
-  let base;
+  const base = { vertices: packVec4(source.positionArray, 3, 1),
+    normals: packVec4(source.normalArray, 3, 0), uvs: source.uvArray };
+  source.geometry.computeBoundingSphere();
+  const boundingRadius = (source.geometry.boundingSphere?.radius ?? 1) * 1.05;
   for (let groupId = 0; groupId < groups.length; groupId++) {
     options.onProgress?.(`Building group ${groupId + 1} / ${groups.length}`, 'Simplifying with shared boundaries locked…');
     // Let the loading overlay paint between group builds.
     if (typeof requestAnimationFrame !== 'undefined') {
       await new Promise(resolve => requestAnimationFrame(resolve));
     }
-    const geometry = source.geometry.clone();
-    geometry.setIndex(new THREE.BufferAttribute(groups[groupId], 1));
-    const part = await buildGroupAsset(geometry, { ...options, vertexLocks: locks, onProgress: () => {} });
+    // Simplify only this group's vertices. Copying the entire scene for every
+    // group makes preprocessing quadratic at terrain-scale triangle counts.
+    const globalVertices = [...new Set(groups[groupId])];
+    const toLocal = new Map(globalVertices.map((index, local) => [index, local]));
+    const geometry = new THREE.BufferGeometry();
+    for (const [name, array, size] of [
+      ['position', source.positionArray, 3], ['normal', source.normalArray, 3], ['uv', source.uvArray, 2]
+    ]) {
+      const local = new Float32Array(globalVertices.length * size);
+      globalVertices.forEach((index, i) => local.set(array.subarray(index * size, index * size + size), i * size));
+      geometry.setAttribute(name, new THREE.BufferAttribute(local, size));
+    }
+    geometry.setIndex(new THREE.BufferAttribute(Uint32Array.from(groups[groupId], index => toLocal.get(index)), 1));
+    const localLocks = Uint8Array.from(globalVertices, index => locks[index]);
+    const part = await buildGroupAsset(geometry, { ...options, vertexLocks: localLocks, onProgress: () => {} });
     geometry.dispose();
-    if (!base) base = { vertices: part.vertices, normals: part.normals, uvs: part.uvs };
+    // Keep every LOD in the original shared vertex address space for rendering,
+    // vertex colors and exact boundary matching between adjacent groups.
+    for (let i = 0; i < part.indices.length; i++) part.indices[i] = globalVertices[part.indices[i]];
     delete part.vertices; delete part.normals; delete part.uvs;
     parts.push(part);
 
@@ -398,7 +415,7 @@ export async function buildNaniteLiteAsset(inputGeometry, options = {}) {
     lods, totalClusters, vertexCount: source.vertexCount,
     sourceTriangleCount: source.indexArray.length / 3,
     lockedVertexCount: locks.reduce((sum, lock) => sum + lock, 0),
-    boundingRadius: parts[0].boundingRadius };
+    boundingRadius };
   for (const key of ['indices', 'clusterBounds', 'clusterConeApex', 'clusterConeAxis', 'clusterLod', 'clusterTriangleCounts']) {
     const Constructor = parts[0][key].constructor;
     asset[key] = new Constructor(parts.reduce((sum, part) => sum + part[key].length, 0));

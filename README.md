@@ -4,7 +4,7 @@ A runnable GPU-driven geometry prototype for **Three.js 0.185.1** and WebGPU.
 
 This is not Unreal Engine Nanite. It implements a deliberately smaller and understandable subset that is useful in a browser renderer:
 
-- Spatial groups of up to 32 leaf meshlets in the terrain scene (16 in the mesh stress test), each with its own GPU-selected LOD
+- Spatial groups of up to 64 leaf meshlets in the terrain scene (16 in the mesh stress test), each with its own GPU-selected LOD
 - Explicit shared-boundary, open-border and attribute-seam vertex locks
 - 64-vertex / 64-triangle meshlets
 - Per-group and per-meshlet GPU frustum culling
@@ -35,7 +35,8 @@ Relative asset paths support the repository subdirectory and local preview.
 - Mobile: use the left joystick to move, swipe the scene to look, and tap **Jump**.
 - Walking follows the terrain height with gravity and simple obstacle collision for trees, rocks and ruin walls. Collision is approximate; this is an explorable rendering sample, with no combat or objectives.
 - Switch **Walking / Orbit camera** in Controls to inspect the whole landscape. **Reset position** restores the spawn or overview.
-- The terrain uses a 256×256 grid on desktop and 160×160 on coarse-pointer devices. Identical vertices are welded before meshlet building, with 32 leaf meshlets per group to reduce startup work. Props use the same deterministic placement on both. The scene is built once per load; switching Nanite does not regenerate it.
+- Geometry density is selectable: Compact uses a 256×256 terrain grid (~181K total triangles), High uses 512×512 (~575K), and Ultra uses 1024×1024 (~2.15M). Desktop defaults to Ultra; coarse-pointer devices default to High. Choose a density in Controls, then press Highland ruins to rebuild. Identical prop vertices are welded, and terrain uses 64 leaf meshlets per group. Preprocessing remaps each group into local vertex arrays before simplification, then restores global indices to preserve shared boundaries and vertex colors. Props use the same deterministic placement on both. The scene is built once per load; switching Nanite does not regenerate it.
+- The always-visible geometry readout compares padded submitted triangles with source triangles and shows submission reduction. Reduction does not guarantee higher FPS: compute overhead, fill rate and display refresh limits still matter.
 - **FPS** and average **ms/frame** stay visible beside the render-mode label and update twice per second. They measure animation-frame cadence, not isolated GPU time. Hidden tabs and asset-building periods are excluded; switching Nanite resets the sample. Display refresh rate can cap FPS.
 - Trees, rocks, ruin stonework and terrain all take part in the Nanite comparison. There is no separate low-detail substitute when Nanite is disabled.
 

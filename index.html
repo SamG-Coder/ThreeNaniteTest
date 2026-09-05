@@ -23,7 +23,7 @@
         <label class="toggle"><input id="nanite-view" type="checkbox" /><span>Nanite view</span></label>
         <button id="panel-toggle" type="button" aria-controls="controls-panel" aria-expanded="true">Controls</button>
         <div class="live-readout"><span id="mode-description" role="status">Nanite on · shaded</span>
-          <span class="fps-readout" title="Animation-frame cadence; not GPU execution time"><strong id="fps-value">—</strong> FPS <span id="frame-ms">— ms</span></span></div>
+          <span class="fps-readout" title="Animation-frame cadence; not GPU execution time"><strong id="fps-value">—</strong> FPS <span id="frame-ms">— ms</span></span><span id="geometry-readout" class="geometry-readout">Preparing geometry…</span></div>
       </nav>
 
       <aside id="controls-panel" class="panel glass" aria-label="Nanite Lite controls">
@@ -63,6 +63,14 @@
 
         <section>
           <h2>Scene</h2>
+          <label class="field"><span>Geometry density</span>
+            <select id="geometry-density">
+              <option value="compact">Compact · ~181K triangles</option>
+              <option value="high">High · ~575K triangles</option>
+              <option value="ultra">Ultra · ~2.15M triangles</option>
+            </select>
+          </label>
+          <p class="muted">Choose a density, then press Highland ruins to rebuild. Nanite on/off always uses that same geometry.</p>
           <div class="scene-buttons">
             <button id="terrain-sample" type="button">Highland ruins</button>
             <button id="navigation-mode" type="button" aria-pressed="true">Walking</button>

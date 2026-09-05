@@ -16,7 +16,9 @@ export function terrainHeight(x, z) {
   return THREE.MathUtils.lerp(1.8, base, courtyard);
 }
 
-export function createGameScene(mobile = false) {
+export const GEOMETRY_DENSITIES = { compact: 256, high: 512, ultra: 1024 };
+
+export function createGameScene(mobile = false, density = mobile ? 'high' : 'ultra') {
   let seed = 731;
   const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
   const parts = [];
@@ -38,7 +40,8 @@ export function createGameScene(mobile = false) {
     if (!geometry.attributes.uv) geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(positions.count * 2),2));
     parts.push(geometry);
   }
-  const segments = mobile ? 160 : 256;
+  const segments = GEOMETRY_DENSITIES[density];
+  if (!segments) throw new Error('Unknown geometry density.');
   const ground = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, segments, segments);
   ground.rotateX(-Math.PI / 2);
   const p = ground.attributes.position;
@@ -104,11 +107,14 @@ export function createGameScene(mobile = false) {
     block(x,1.8,-31,1.2,2.6,15);
     obstacles.push({x,z:-31,halfX:.6,halfZ:7.5});
   }
-  const merged = mergeGeometries(parts, false);
+  const weldedParts = parts.map(part => {
+    if (part === ground) return part;
+    const welded = mergeVertices(part); part.dispose(); return welded;
+  });
+  const merged = mergeGeometries(weldedParts, false);
   if (!merged) throw new Error('Unable to assemble the terrain scene.');
-  for (const part of parts) part.dispose();
-  const geometry = mergeVertices(merged);
-  merged.dispose();
+  for (const part of weldedParts) part.dispose();
+  const geometry = merged;
   geometry.computeBoundingBox(); geometry.computeBoundingSphere();
   return {geometry, obstacles, heightAt:terrainHeight, spawn:[8,0,36], bounds:WORLD_SIZE/2-2};
 }

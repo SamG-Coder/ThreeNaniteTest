@@ -30,6 +30,7 @@ const frameMeter = new FrameMeter(sample => ui.updateFps(sample));
 ui.onRenderModeChange = () => { frameMeter.reset(); ui.clearFps(); };
 const mobileProfile = window.matchMedia('(pointer: coarse)').matches;
 const pixelRatioLimit = mobileProfile ? 1 : 2;
+ui.elements.geometryDensity.value = mobileProfile ? 'high' : 'ultra';
 
 function resetCamera() {
   if (activeWorld) {
@@ -113,7 +114,7 @@ async function rebuildScene(geometry, displayName, world = null) {
   await new Promise((resolve) => requestAnimationFrame(resolve));
 
   const asset = await buildNaniteLiteAsset(geometry, {
-    meshletsPerGroup: world ? 32 : 16,
+    meshletsPerGroup: world ? 64 : 16,
     onProgress(title, detail) {
       if (generation === rebuildGeneration) ui.updateLoading(title, detail);
     }
@@ -231,7 +232,9 @@ async function initialise() {
   };
   ui.onTerrain = async () => {
     try {
-      const world = createGameScene(mobileProfile);
+      ui.showLoading('Preparing landscape', 'Generating the selected geometry density…');
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const world = createGameScene(mobileProfile, ui.elements.geometryDensity.value);
       await rebuildScene(world.geometry, 'Highland ruins · terrain, forest and stonework', world);
     } catch (error) { ui.showFatalError(error); }
   };
