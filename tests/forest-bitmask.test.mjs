@@ -34,9 +34,9 @@ test('forest software mode submits both compute selections and hides geometry ha
   const calls=[];
   const make=name=>({naniteMesh:{visible:true},baselineMesh:{visible:false},render:(...args)=>calls.push([name,...args])});
   const terrain=make('terrain'),trees=make('trees');
-  const forest={terrain,trees,pipelines:[terrain,trees],enabled:true,bitmask:{busy:false,render:now=>calls.push(['bitmask',now])}};
+  const forest={terrain,trees,pipelines:[terrain,trees],enabled:true,bitmask:{busy:false,prepare(now){if(this.busy)return false;calls.push(['prepare',now]);return true;},render:now=>calls.push(['bitmask',now])}};
   ForestRenderer.prototype.render.call(forest,123);
-  assert.deepEqual(calls,[['trees',123,true],['terrain',123,true],['bitmask',123]]);
+  assert.deepEqual(calls,[['prepare',123],['bitmask',123]]);
   assert.equal(terrain.naniteMesh.visible,false);assert.equal(trees.naniteMesh.visible,false);
   forest.bitmask.busy=true;calls.length=0;
   assert.equal(ForestRenderer.prototype.render.call(forest,124),false);assert.equal(calls.length,0);

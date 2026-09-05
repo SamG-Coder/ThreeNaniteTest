@@ -13,6 +13,8 @@ The **Geometry** selector now offers four distinct paths:
 
 The original Bitmask Raster shader is the default again: the depth-cache experiment ran roughly half as fast on the user's phone. Compare the [original](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskVariant=original) with the new [triangle-owned masks experiment](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskVariant=owned). The new path replaces coverage atomics with two mask words per triangle and defers depth interpolation until resolution, without an 8 KiB depth cache. Geometry and resolution stay the same; its device performance is not yet measured. The previous [depth-cache experiment](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskVariant=cached) remains available for diagnosis.
 
+**Frame experiments:** In Bitmask Raster, open Controls → Raster experiments. Compare one/two frames in flight, batched selection, unused draw arguments, direct presentation, and optional GPU timings independently. [Start with the old scheduling baseline](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskVariant=original&frames=1&batch=0&skipArgs=0&direct=0). Batching and skipping unused arguments are enabled by default; two-frame queuing and direct presentation are opt-in. CPU submission, frame intervals and GPU timeline measurements are labelled separately. See the [test specification](docs/BITMASK_RASTER_TEST.md#frame-scheduling-and-presentation-experiments) for measurement limits.
+
 Hierarchical LOD is the default. This is a browser experiment, not Epic's Nanite implementation. Patch LOD and Hierarchical LOD include:
 
 - Patch LOD: spatial groups of up to 64 leaf meshlets in the terrain scene (16 in the mesh stress test)

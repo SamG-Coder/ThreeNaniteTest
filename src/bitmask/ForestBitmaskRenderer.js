@@ -4,6 +4,7 @@ import { forestRasterWGSL } from './forestShaders.js';
 import { forestReferenceWGSL } from './forestReferenceShaders.js';
 import { forestOwnedMaskWGSL } from './forestOwnedMaskShaders.js';
 import { rasterVariant, rasterVariantLabels } from './variant.js';
+import { FrameGate, FrameProbe, frameOptions } from './FrameExperiment.js';
 
 // Uses the pinned Three 0.185.1 backend to share GPU-selected meshlet lists.
 // Geometry visibility and color are computed here; Three presents the output
@@ -12,9 +13,12 @@ export class ForestBitmaskRenderer {
   constructor(forest) {
     this.forest=forest;this.renderer=forest.terrain.renderer;this.camera=forest.terrain.camera;
     this.device=this.renderer.backend.device;this.outputMode='shaded';this.disposed=false;
-    this.lastReadback=-Infinity;this.reading=false;this.busy=false;this.generation=0;
+    this.lastReadback=-Infinity;this.reading=false;this.generation=0;
     this.metrics=null;this.buffers=[];
     this.variant=rasterVariant(globalThis.location?.search??'');
+    this.options=frameOptions(globalThis.location?.search??'');this.gate=new FrameGate(this.options.frames);
+    this.probe=new FrameProbe(this.device);this.intervals=[];this.lastSubmit=null;this.cpuMs=0;
+    this.selectionNodes=null;
     this.uniformBytes=new ArrayBuffer(128);
     this.uniform=this.makeBuffer(128,GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST);
     this.control=this.makeBuffer(32,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);
@@ -31,7 +35,51 @@ export class ForestBitmaskRenderer {
       return {vertices:this.makeBuffer(vertices.byteLength,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST,vertices),
         indices:this.makeBuffer(indices.byteLength,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST,indices)};
     });
-    this.resize();
+    this.resize();this.createControls();
+  }
+  get busy(){return this.gate.busy;}
+  createControls(){
+    this.panel=document.createElement('section');
+    this.panel.innerHTML=`<h2>Raster experiments</h2><p>Compare one change at a time. Reset camera before measuring.</p>`;
+    const controls=[['frames','Frames in flight',[['1','1 — baseline'],['2','2 — overlap submissions']]],['batch','Batch selection',[[true,'On'],[false,'Off']]],['skipArgs','Skip unused draw arguments',[[true,'On'],[false,'Off']]],['direct','Presentation',[[false,'Intermediate target'],[true,'Direct — experimental']]],['profile','GPU timing',[[false,'Off'],[true,'On — sampled']]]];
+    for(const [key,title,choices] of controls){
+      const label=document.createElement('label');label.className='field';
+      const span=document.createElement('span');span.textContent=title;label.append(span);
+      const select=document.createElement('select');
+      for(const [value,text] of choices){const o=document.createElement('option');o.value=String(value);o.textContent=text;select.append(o);}
+      select.value=String(this.options[key]);
+      select.onchange=()=>{this.options[key]=key==='frames'?Number(select.value):select.value==='true';this.gate.limit=this.options.frames;this.intervals=[];this.lastSubmit=null;this.gate.skipped=0;this.probe.gpu=null;};
+      label.append(select);this.panel.append(label);
+    }
+    this.readout=document.createElement('p');this.readout.className='muted';this.panel.append(this.readout);
+    document.getElementById('controls-panel').append(this.panel);
+  }
+  prepare(now){
+    if(this.busy){this.gate.skipped++;this.updateReadout();return false;}
+    this.cpuStart=performance.now();this.probe.begin(now,this.options.profile);this.probe.mark(0);
+    const nodes=[];
+    for(const p of [this.forest.trees,this.forest.terrain]){
+      p.updateCameraUniforms();nodes.push(p.computeClear,p.computeCull);
+      if(!this.options.skipArgs)nodes.push(p.computeDrawArguments);
+    }
+    if(this.options.batch){
+      // Stable array identity avoids growing Three's compute-group cache.
+      if(!this.selectionNodes||this.selectionNodes.length!==nodes.length)this.selectionNodes=nodes;
+      this.renderer.compute(this.selectionNodes);
+    }else for(const node of nodes)this.renderer.compute(node);
+    this.probe.mark(1);
+    for(const p of this.forest.pipelines)p.requestStatsReadback(now);
+    return true;
+  }
+  updateReadout(){
+    if(!this.readout||performance.now()-(this.lastUI??-Infinity)<500)return;
+    this.lastUI=performance.now();
+    const sorted=[...this.intervals].sort((a,b)=>a-b);
+    const median=sorted[Math.floor(sorted.length*.5)]??0,p95=sorted[Math.floor(sorted.length*.95)]??0;
+    const gpu=this.options.profile&&this.probe.gpu;
+    this.readout.textContent=`CPU submission ${this.cpuMs.toFixed(1)} ms · frame median ${median.toFixed(1)} / p95 ${p95.toFixed(1)} ms · skipped ${this.gate.skipped} · queued ${this.gate.pending}. `+
+      (gpu?['Selection','Binning','Raster','Sky/water','Composite','Screen copy'].map((label,i)=>`${label} ${gpu[i].toFixed(2)} ms`).join(' · '):this.options.profile?(this.probe.queries?'GPU sample pending.':'GPU timestamps unsupported.'):'GPU timing off.')+
+      ' GPU boundaries include queue gaps; sampled profiling adds overhead.';
   }
   makeBuffer(size,usage,data){
     const b=this.device.createBuffer({size,usage});this.buffers.push(b);
@@ -118,7 +166,7 @@ export class ForestBitmaskRenderer {
     encoder.copyBufferToBuffer(this.sharedBuffer(a.visibleCountAttribute),0,this.control,0,4);
     encoder.copyBufferToBuffer(this.sharedBuffer(b.visibleCountAttribute),0,this.control,4,4);
     for(const name of ['clear','bin','raster']){
-      const pass=encoder.beginComputePass({label:`Forest bitmask ${name}`});
+      const pass=encoder.beginComputePass({label:`Forest bitmask ${name}`,timestampWrites:name==='bin'?this.probe.writes(2):name==='raster'?this.probe.writes(4):undefined});
       pass.setPipeline(this.pipelines[name]);pass.setBindGroup(0,this.groups[name]);
       if(name==='raster')pass.dispatchWorkgroups(this.tilesX,this.tilesY);
       else pass.dispatchWorkgroups(name==='clear'?Math.ceil(Math.max(8,this.tilesX*this.tilesY)/64):a.maxVisibleClusters+b.maxVisibleClusters);
@@ -129,15 +177,24 @@ export class ForestBitmaskRenderer {
     if(read)this.readStats(now);
     // Keep the existing lake and sky. Forest geometry has no hardware draw.
     const r=this.renderer;
-    r.setRenderTarget(a.sceneTarget);if(!r.autoClear)r.clear();r.render(a.scene,this.camera);
+    const direct=this.options.direct;
+    if(this.quad.material.toneMapped!==direct){this.quad.material.toneMapped=direct;this.quad.material.needsUpdate=true;}
+    this.probe.mark(6);
+    r.setRenderTarget(direct?null:a.sceneTarget);if(!r.autoClear)r.clear();r.render(a.scene,this.camera);
+    this.probe.mark(7);this.probe.mark(8);
     const autoClear=r.autoClear;
     try{r.autoClear=false;this.quad.render(r);}finally{r.autoClear=autoClear;}
-    r.setRenderTarget(null);a.blitQuad.render(r);
+    this.probe.mark(9);this.probe.mark(10);
+    if(!direct){r.setRenderTarget(null);a.blitQuad.render(r);}
+    this.probe.mark(11);this.probe.finish();
     // Pace submissions without blocking the JS thread or accumulating an
-    // unbounded queue of expensive software frames on slower devices.
-    this.busy=true;
-    this.device.queue.onSubmittedWorkDone().then(()=>{this.busy=false;})
-      .catch(()=>{this.busy=false;});
+    // unbounded queue of expensive software frames on slower devices. Queue
+    // writes and GPU copies stay ordered after earlier frame consumers.
+    // A mapped diagnostics buffer is never reused until its map completes.
+    this.gate.track(this.device.queue.onSubmittedWorkDone());
+    const submitted=performance.now();this.cpuMs=submitted-this.cpuStart;
+    if(this.lastSubmit!==null&&submitted-this.lastSubmit<1000){this.intervals.push(submitted-this.lastSubmit);if(this.intervals.length>120)this.intervals.shift();}
+    this.lastSubmit=submitted;if(read)this.updateReadout();
   }
   readStats(now){
     this.reading=true;this.lastReadback=now;const generation=this.generation;
@@ -151,7 +208,7 @@ export class ForestBitmaskRenderer {
       .finally(()=>{this.reading=false;if(this.disposed)this.readback.destroy();});
   }
   dispose(){
-    this.disposed=true;this.generation++;
+    this.disposed=true;this.generation++;this.panel?.remove();this.probe.dispose();
     for(const b of this.buffers)if(b!==this.readback||!this.reading)b.destroy();
     for(const t of this.textures)t.dispose();this.quad.material.dispose();
   }

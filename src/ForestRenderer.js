@@ -45,13 +45,11 @@ export class ForestRenderer {
   }
   async initBitmask() { if(this.bitmask)await this.bitmask.init(); }
   render(now) {
-    if(this.bitmask&&this.enabled&&this.bitmask.busy)return false;
-    this.trees.render(now,true);
     if(this.bitmask&&this.enabled){
-      this.terrain.render(now,true);
+      if(!this.bitmask.prepare(now))return false;
       for(const p of this.pipelines){p.naniteMesh.visible=false;p.baselineMesh.visible=false;}
       this.bitmask.render(now);
-    }else this.terrain.render(now);
+    }else {this.trees.render(now,true);this.terrain.render(now);}
   }
   setNaniteEnabled(value) {
     this.enabled=Boolean(value); this.samples.clear();
