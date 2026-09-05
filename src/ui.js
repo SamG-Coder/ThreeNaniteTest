@@ -28,7 +28,7 @@ export class DemoUI {
       navigationMode: document.querySelector('#navigation-mode'),
       gameHud: document.querySelector('#game-hud'),
       outputMode: document.querySelector('#output-mode'),
-      naniteEnabled: document.querySelector('#nanite-enabled'),
+      renderMode: document.querySelector('#render-mode'),
       naniteView: document.querySelector('#nanite-view'),
       panelToggle: document.querySelector('#panel-toggle'),
       panel: document.querySelector('#controls-panel'),
@@ -83,8 +83,7 @@ export class DemoUI {
       this.onNavigationMode?.(walking);
     });
     this.elements.outputMode.addEventListener('change', () => this.syncRendererControls());
-    this.elements.naniteEnabled.addEventListener('change', () => {
-      this.pipeline?.setNaniteEnabled(this.elements.naniteEnabled.checked);
+    this.elements.renderMode.addEventListener('change', () => {
       this.elements.visibleMeshlets.textContent = '—';
       this.elements.submittedTriangles.textContent = '—';
       this.elements.capacity.textContent = '—';
@@ -143,7 +142,7 @@ export class DemoUI {
 
   bindPipeline(pipeline) {
     this.pipeline = pipeline;
-    pipeline.setNaniteEnabled(this.elements.naniteEnabled.checked);
+    pipeline.setNaniteEnabled(this.elements.renderMode.value !== 'full');
     this.syncRendererControls();
     pipeline.setLodThreshold(Number(this.elements.lodThreshold.value));
     pipeline.setOcclusionEnabled(this.elements.occlusionEnabled.checked);
@@ -180,7 +179,7 @@ export class DemoUI {
   }
 
   syncRendererControls() {
-    const enabled = this.elements.naniteEnabled.checked;
+    const enabled = this.elements.renderMode.value !== 'full';
     const visualizing = enabled && this.elements.naniteView.checked;
     this.elements.naniteView.disabled = !enabled;
     this.elements.outputMode.disabled = !visualizing;
@@ -191,7 +190,7 @@ export class DemoUI {
     this.pipeline?.setOutputMode(mode);
     const label = visualizing ? this.elements.outputMode.selectedOptions[0].text : 'shaded';
     this.elements.modeDescription.textContent = enabled
-      ? `Nanite on · ${label}` : 'Nanite off · full resolution';
+      ? `${this.elements.renderMode.value === 'nanite' ? 'Nanite (experimental)' : 'Auto LOD'} · ${label}` : 'Full resolution';
     this.elements.lodBars.hidden = !enabled;
   }
 
@@ -205,6 +204,7 @@ export class DemoUI {
   }
 
   showLoading(title, detail = '') {
+    this.elements.renderMode.disabled = true;
     this.elements.loadingTitle.textContent = title;
     this.elements.loadingDetail.textContent = detail;
     this.elements.loading.classList.add('visible');
@@ -219,6 +219,7 @@ export class DemoUI {
   }
 
   hideLoading() {
+    this.elements.renderMode.disabled = false;
     this.elements.loading.classList.remove('visible');
     this.elements.loading.classList.add('hidden');
     this.setStatus('WebGPU active', false);
@@ -242,7 +243,7 @@ export class DemoUI {
       const row = document.createElement('div');
       row.className = 'lod-row';
       row.innerHTML = `
-        <span>LOD ${index}</span>
+        <span>${this.pipeline?.asset.hierarchy ? 'Tier' : 'LOD'} ${index}${this.pipeline?.asset.hierarchy && index === 5 ? '+' : ''}</span>
         <div class="lod-track"><div class="lod-fill" data-lod-fill="${index}"></div></div>
         <span data-lod-count="${index}">0</span>
       `;
@@ -258,12 +259,12 @@ export class DemoUI {
       ? 'Meshlet capacity exceeded · some geometry was dropped'
       : `${submitted} submitted / ${source} source · ${reduction.toFixed(0)}% fewer`;
     this.elements.geometryReadout.classList.toggle('capacity-error', Boolean(stats.overflowed));
-    this.elements.geometryReadout.title = 'Nanite submission counts include padded meshlet triangles. Fewer submitted triangles does not guarantee higher FPS.';
+    this.elements.geometryReadout.title = 'Meshlet submission counts include padded meshlet triangles. Fewer submitted triangles does not guarantee higher FPS.';
     this.elements.sourceTriangles.textContent = numberFormatter.format(
       stats.sourceTriangles
     );
     this.elements.groups.textContent = numberFormatter.format(stats.groups);
-    this.elements.groups.title = `${numberFormatter.format(stats.lockedVertices)} shared-boundary vertices locked`;
+    this.elements.groups.title = this.pipeline?.asset.hierarchy ? 'Recursive hierarchy nodes; each parent replaces its complete subtree' : `${numberFormatter.format(stats.lockedVertices)} shared-boundary vertices locked`;
     this.elements.instances.textContent = numberFormatter.format(stats.instances);
     this.elements.sourceScene.textContent = compactFormatter.format(
       stats.sourceSceneTriangles

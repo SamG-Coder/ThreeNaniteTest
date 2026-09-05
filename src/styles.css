@@ -509,3 +509,11 @@ input[type="range"] { min-height: 44px; }
 .geometry-readout { flex-basis: 100%; color: #becbb2; font-size: .75rem; font-variant-numeric: tabular-nums; }
 
 .geometry-readout.capacity-error { color: #ffb979; }
+
+.mode-select { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mode-select > span { font-size: .75rem; color: #aabed7; }
+.mode-select select { max-width: 200px; min-height: 44px; margin: 0; }
+@media (max-width: 480px) {
+  .mode-select > span { display: none; }
+  .mode-select select { max-width: 175px; font-size: .78rem; }
+}

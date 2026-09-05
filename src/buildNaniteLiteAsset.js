@@ -68,7 +68,7 @@ function createFallbackUVs(positionArray) {
   return uv;
 }
 
-function prepareSourceGeometry(inputGeometry) {
+export function prepareSourceGeometry(inputGeometry) {
   const geometry = inputGeometry.clone();
 
   if (!geometry.getAttribute('position')) {
@@ -119,7 +119,7 @@ function prepareSourceGeometry(inputGeometry) {
   };
 }
 
-function packVec4(source, itemSize, wValue) {
+export function packVec4(source, itemSize, wValue) {
   const count = source.length / itemSize;
   const packed = new Float32Array(count * 4);
 
@@ -134,13 +134,11 @@ function packVec4(source, itemSize, wValue) {
 }
 
 /**
- * Builds a fully resident Nanite Lite asset in the browser.
- *
- * The current version intentionally uses a discrete object-LOD chain rather
- * than a crack-free cluster hierarchy. Each LOD is split into 64/64 meshlets,
- * then all meshlets are stored in one set of GPU-friendly arrays.
+ * Shared WASM simplification and meshlet packing helper. Auto LOD uses a
+ * six-level patch chain; hierarchy construction requests a single leaf or
+ * child-merge simplification and retains the resulting representative.
  */
-async function buildGroupAsset(inputGeometry, options = {}) {
+export async function buildGroupAsset(inputGeometry, options = {}) {
   const onProgress = options.onProgress ?? (() => {});
   const lodTargets = options.lodTargets ?? LOD_TARGETS;
 
@@ -346,7 +344,7 @@ async function buildGroupAsset(inputGeometry, options = {}) {
   };
 }
 
-/** Boundary-locked patch LODs. This is not yet a recursive cluster DAG. */
+/** Auto LOD: independent boundary-locked patch chains. */
 export async function buildNaniteLiteAsset(inputGeometry, options = {}) {
   const source = prepareSourceGeometry(inputGeometry);
   const { groups, locks } = await partitionMeshlets(

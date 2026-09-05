@@ -527,8 +527,8 @@ export class NaniteLiteRenderer {
     const lods = asset.lods;
 
     this.computeCull = Fn(() => {
-      const instanceId = instanceIndex.div(uint(asset.groupCount));
-      const groupId = instanceIndex.mod(uint(asset.groupCount));
+      const instanceId = asset.hierarchy ? instanceIndex : instanceIndex.div(uint(asset.groupCount));
+      const initialGroup = asset.hierarchy ? uint(0) : instanceIndex.mod(uint(asset.groupCount));
       const data = instanceDataBuffer.element(instanceId);
       const position = data.xyz;
       const scale = data.w;
@@ -544,128 +544,151 @@ export class NaniteLiteRenderer {
       );
 
       // Exactly one writer per matrix; all groups use the identical transform.
-      If(groupId.equal(0), () => instanceWorldBuffer.element(instanceId).assign(worldMatrix));
-      const groupBounds = groupBoundsBuffer.element(groupId);
-      const groupCentre = worldMatrix.mul(vec4(groupBounds.xyz, 1.0)).xyz.toVar();
+      If(initialGroup.equal(0), () => { instanceWorldBuffer.element(instanceId).assign(worldMatrix); });
+      const nextNode = uint(0).toVar();
+      const processGroup = groupId => {
+        if (asset.hierarchy) nextNode.assign(uint(groupLodBuffer.element(groupId.mul(6).add(1)).x));
+        const groupBounds = groupBoundsBuffer.element(groupId);
+        const groupCentre = worldMatrix.mul(vec4(groupBounds.xyz, 1.0)).xyz.toVar();
 
-      const instanceVisible = bool(true).toVar();
-      const instanceRadius = scale.mul(groupBounds.w);
+        const instanceVisible = bool(true).toVar();
+        const instanceRadius = scale.mul(groupBounds.w);
 
-      Loop({ start: 0, end: 6 }, ({ i: planeIndex }) => {
-        const plane = frustumPlanesUniform.element(planeIndex);
-        const planeDistance = dot(plane.xyz, groupCentre).add(plane.w);
+        Loop({ start: 0, end: 6 }, ({ i: planeIndex }) => {
+          const plane = frustumPlanesUniform.element(planeIndex);
+          const planeDistance = dot(plane.xyz, groupCentre).add(plane.w);
 
-        If(planeDistance.lessThan(instanceRadius.negate()), () => {
-          instanceVisible.assign(false);
+          If(planeDistance.lessThan(instanceRadius.negate()), () => {
+            instanceVisible.assign(false);
+          });
         });
-      });
 
-      If(
-        instanceVisible
-          .and(occlusionEnabledUniform.equal(1))
-          .and(hzbValidUniform.equal(1)),
-        () => {
-          instanceVisible.assign(sphereOccluded(groupCentre, instanceRadius).not());
-        }
-      );
-
-      If(instanceVisible, () => {
-        const distanceToSurface = max(
-          0.01,
-          distance(cameraPositionUniform, groupCentre).sub(instanceRadius)
-        );
-        const pixelFactor = this.cotHalfFovUniform
-          .div(distanceToSurface)
-          .mul(float(screenSize.y))
-          .div(2.0);
-
-        const lodLevel = uint(0).toVar();
-        let selection = null;
-
-        for (let level = lods.length - 1; level > 0; level -= 1) {
-          const acceptable = groupLodBuffer.element(groupId.mul(lods.length).add(level)).x
-            .mul(scale)
-            .mul(pixelFactor)
-            .lessThanEqual(lodThresholdUniform);
-
-          if (selection === null) {
-            selection = If(acceptable, () => lodLevel.assign(level));
-          } else {
-            selection = selection.ElseIf(acceptable, () => lodLevel.assign(level));
-          }
-        }
-
-        const lodData = groupLodBuffer.element(groupId.mul(lods.length).add(lodLevel));
-        const clusterStart = uint(lodData.y);
-        const clusterCount = uint(lodData.z);
-
-        Loop(
-          {
-            name: 'localCluster',
-            type: 'uint',
-            start: uint(0),
-            end: clusterCount,
-            condition: '<'
-          },
-          ({ localCluster }) => {
-            const clusterId = clusterStart.add(uint(localCluster));
-            const bounds = clusterBoundsBuffer.element(clusterId);
-            const localCentre = bounds.xyz;
-            const worldCentre = worldMatrix.mul(vec4(localCentre, 1.0)).xyz.toVar();
-            const worldRadius = bounds.w.mul(scale).toVar();
-            const clusterVisible = bool(true).toVar();
-
-            Loop({ name: 'clusterPlane', start: 0, end: 6 }, ({ clusterPlane }) => {
-              const plane = frustumPlanesUniform.element(clusterPlane);
-              const planeDistance = dot(plane.xyz, worldCentre).add(plane.w);
-
-              If(planeDistance.lessThan(worldRadius.negate()), () => {
-                clusterVisible.assign(false);
-              });
-            });
-
-            If(clusterVisible.and(coneEnabledUniform.equal(1)), () => {
-              const coneApex = clusterConeApexBuffer.element(clusterId);
-              const coneAxis = clusterConeAxisBuffer.element(clusterId);
-              const worldApex = worldMatrix.mul(vec4(coneApex.xyz, 1.0)).xyz;
-              const worldAxis = normalize(worldMatrix.mul(vec4(coneAxis.xyz, 0.0)).xyz);
-              const cameraToApex = normalize(worldApex.sub(cameraPositionUniform));
-
-              If(coneApex.w.greaterThanEqual(0.0)
-                .and(coneApex.w.lessThan(1.0))
-                .and(dot(coneAxis.xyz, coneAxis.xyz).greaterThan(0.5))
-                .and(dot(cameraToApex, worldAxis).greaterThanEqual(coneApex.w)), () => {
-                clusterVisible.assign(false);
-              });
-            });
-
-            If(
-              clusterVisible
-                .and(occlusionEnabledUniform.equal(1))
-                .and(hzbValidUniform.equal(1)),
-              () => {
-                clusterVisible.assign(sphereOccluded(worldCentre, worldRadius).not());
-              }
-            );
-
-            If(clusterVisible, () => {
-              const slot = atomicAdd(visibleCountAtomic.element(0), uint(1));
-
-              If(slot.lessThan(maxVisibleClusters), () => {
-                visibleClustersWrite
-                  .element(slot)
-                  .assign(uvec2(instanceId, clusterId));
-                atomicAdd(lodCounterAtomic.element(lodLevel), uint(1));
-              }).Else(() => {
-                atomicStore(overflowAtomic.element(0), uint(1));
-              });
-            });
+        If(
+          instanceVisible
+            .and(occlusionEnabledUniform.equal(1))
+            .and(hzbValidUniform.equal(1)),
+          () => {
+            instanceVisible.assign(sphereOccluded(groupCentre, instanceRadius).not());
           }
         );
-      });
+
+        If(instanceVisible, () => {
+          const distanceToSurface = max(
+            0.01,
+            (asset.hierarchy
+              ? this.projScreenMatrixUniform.mul(vec4(groupCentre, 1.0)).w
+              : distance(cameraPositionUniform, groupCentre)).sub(instanceRadius)
+          );
+          const pixelFactor = this.cotHalfFovUniform
+            .div(distanceToSurface)
+            .mul(float(screenSize.y))
+            .div(2.0);
+
+          const lodLevel = uint(0).toVar();
+          let selection = null;
+
+          for (let level = asset.hierarchy ? 0 : lods.length - 1; level > 0; level -= 1) {
+            const acceptable = groupLodBuffer.element(groupId.mul(lods.length).add(level)).x
+              .mul(scale)
+              .mul(pixelFactor)
+              .lessThanEqual(lodThresholdUniform);
+
+            if (selection === null) {
+              selection = If(acceptable, () => { lodLevel.assign(level); });
+            } else {
+              selection = selection.ElseIf(acceptable, () => { lodLevel.assign(level); });
+            }
+          }
+
+          const lodData = groupLodBuffer.element(groupId.mul(lods.length).add(asset.hierarchy ? uint(0) : lodLevel));
+          const clusterStart = uint(lodData.y);
+          const clusterCount = uint(lodData.z).toVar();
+          if (asset.hierarchy) {
+            const traversal = groupLodBuffer.element(groupId.mul(6).add(1));
+            lodLevel.assign(uint(traversal.z));
+            If(traversal.y.greaterThan(0).and(lodData.x.mul(scale).mul(pixelFactor).greaterThan(lodThresholdUniform)), () => {
+              // Refine the whole replacement group. Descendants are never drawn
+              // together with an accepted parent; rejected subtrees use escape.
+              clusterCount.assign(0);
+              nextNode.assign(groupId.add(1));
+            });
+          }
+
+          Loop(
+            {
+              name: 'localCluster',
+              type: 'uint',
+              start: uint(0),
+              end: clusterCount,
+              condition: '<'
+            },
+            ({ localCluster }) => {
+              const clusterId = clusterStart.add(uint(localCluster));
+              const bounds = clusterBoundsBuffer.element(clusterId);
+              const localCentre = bounds.xyz;
+              const worldCentre = worldMatrix.mul(vec4(localCentre, 1.0)).xyz.toVar();
+              const worldRadius = bounds.w.mul(scale).toVar();
+              const clusterVisible = bool(true).toVar();
+
+              Loop({ name: 'clusterPlane', start: 0, end: 6 }, ({ clusterPlane }) => {
+                const plane = frustumPlanesUniform.element(clusterPlane);
+                const planeDistance = dot(plane.xyz, worldCentre).add(plane.w);
+
+                If(planeDistance.lessThan(worldRadius.negate()), () => {
+                  clusterVisible.assign(false);
+                });
+              });
+
+              If(clusterVisible.and(coneEnabledUniform.equal(1)), () => {
+                const coneApex = clusterConeApexBuffer.element(clusterId);
+                const coneAxis = clusterConeAxisBuffer.element(clusterId);
+                const worldApex = worldMatrix.mul(vec4(coneApex.xyz, 1.0)).xyz;
+                const worldAxis = normalize(worldMatrix.mul(vec4(coneAxis.xyz, 0.0)).xyz);
+                const cameraToApex = normalize(worldApex.sub(cameraPositionUniform));
+
+                If(coneApex.w.greaterThanEqual(0.0)
+                  .and(coneApex.w.lessThan(1.0))
+                  .and(dot(coneAxis.xyz, coneAxis.xyz).greaterThan(0.5))
+                  .and(dot(cameraToApex, worldAxis).greaterThanEqual(coneApex.w)), () => {
+                  clusterVisible.assign(false);
+                });
+              });
+
+              If(
+                clusterVisible
+                  .and(occlusionEnabledUniform.equal(1))
+                  .and(hzbValidUniform.equal(1)),
+                () => {
+                  clusterVisible.assign(sphereOccluded(worldCentre, worldRadius).not());
+                }
+              );
+
+              If(clusterVisible, () => {
+                const slot = atomicAdd(visibleCountAtomic.element(0), uint(1));
+
+                If(slot.lessThan(maxVisibleClusters), () => {
+                  visibleClustersWrite
+                    .element(slot)
+                    .assign(uvec2(instanceId, clusterId));
+                  atomicAdd(lodCounterAtomic.element(lodLevel), uint(1));
+                }).Else(() => {
+                  atomicStore(overflowAtomic.element(0), uint(1));
+                });
+              });
+            }
+          );
+        });
+      };
+      if (asset.hierarchy) {
+        const node = uint(0).toVar();
+        Loop(node.lessThan(uint(asset.groupCount)), () => {
+          processGroup(node);
+          node.assign(nextNode);
+        });
+      } else processGroup(initialGroup);
     })()
-      .compute(this.instanceCount * asset.groupCount, [64])
-      .setName('Nanite Lite Group Cull + LOD');
+      .compute(this.instanceCount * (asset.hierarchy ? 1 : asset.groupCount), [64])
+      .setName(asset.hierarchy ? 'Nanite Hierarchy Traversal' : 'Auto LOD Group Cull');
 
     this.computeDrawArguments = Fn(() => {
       const visibleCount = min(

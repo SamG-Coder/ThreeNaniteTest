@@ -2,9 +2,18 @@
 
 A runnable GPU-driven geometry prototype for **Three.js 0.185.1** and WebGPU.
 
-This is not Unreal Engine Nanite. It implements a deliberately smaller and understandable subset that is useful in a browser renderer:
+The **Geometry** selector now offers three distinct paths:
 
-- Spatial groups of up to 64 leaf meshlets in the terrain scene (16 in the mesh stress test), each with its own GPU-selected LOD
+| Mode | Geometry selection |
+| --- | --- |
+| Full resolution | Original indexed instances; bypasses meshlet compute |
+| Auto LOD | The previous implementation: six independent boundary-locked LODs per spatial patch |
+| Nanite (experimental) | New recursive cluster tree; GPU traversal selects parents or refines into children by projected pixel error |
+
+Nanite (experimental) is the default. This is a browser experiment, not Epic's Nanite implementation. Both optimized modes include:
+
+- Auto LOD: spatial groups of up to 64 leaf meshlets in the terrain scene (16 in the mesh stress test)
+- Nanite: eight-meshlet leaves, recursively merged/simplified/reclustered parents, and stackless GPU traversal
 - Explicit shared-boundary, open-border and attribute-seam vertex locks
 - 64-vertex / 64-triangle meshlets
 - Per-group and per-meshlet GPU frustum culling
@@ -20,9 +29,21 @@ This is not Unreal Engine Nanite. It implements a deliberately smaller and under
 
 The default map is **Emerald Basin**, a natural forest stress test with a mountain lake, granite outcrops and detailed broadleaf trees. The map contains no buildings. Trees contain modeled branches and individual opaque 3D leaves, rather than solid canopy blobs or alpha cards.
 
-The scene stores one high-detail tree asset and places it 96, 256 or 512 times with deterministic positions, rotations and scales. These are full-resolution indexed instances when Nanite is off; Nanite on uses the same source asset with GPU group LOD selection and meshlet culling. Terrain and forest use separate indirect draws in one scene and one presentation pass. Geometry readouts sum both batches; FPS includes lake shading too.
+The scene stores one high-detail tree asset and places it 96, 256 or 512 times with deterministic positions, rotations and scales. All three modes use identical source geometry and instance placement. Full resolution draws the original indexed instances; Auto LOD and Nanite use their respective selection algorithms and meshlet culling. Terrain and forest use separate indirect draws in one scene and one presentation pass. Geometry readouts sum both batches; FPS includes lake shading too.
 
 The original mesh stress test and mountain terrain sample remain available in Controls.
+
+## Experimental hierarchy and limits
+
+The existing meshoptimizer WebAssembly simplifier and clusterizer perform preprocessing. Each parent merges the simplified child geometry, unlocks internal child boundaries, simplifies again with its outer boundary locked, and reclusters the result. Errors accumulate from children; parent bounds enclose child spheres. Source positions and attribute references stay unchanged.
+
+Each frame a GPU invocation traverses one instance's tree. An accepted parent skips its complete subtree; an unacceptable parent descends. Screen-space error uses accumulated geometric error, instance scale, projection depth to the nearest sphere surface, vertical field of view and drawing-buffer height. Frustum rejection also skips whole subtrees. Accepted meshlets undergo cone/frustum culling, atomic compaction and indirect drawing. Tier 5+ in the visualization combines deeper hierarchy levels.
+
+This is a resident binary hierarchy, not a repartitioned cluster DAG. It has no geometry streaming, software rasterizer, material visibility buffer or production occlusion system. Single-invocation traversal can bottleneck very large individual assets. Boundary locks and conservative error accumulation can retain more triangles than desired. The pixel threshold is an approximate geometric metric, not a guaranteed image-difference bound. WASM accelerates CPU preprocessing; it does not bypass WebGPU/device limits. No mobile FPS improvement is claimed without device measurements.
+
+Regression tests check exact leaf coverage/winding, parent boundary matching, bounds/error monotonicity, complete non-overlapping cuts, response to viewport/FOV/distance/error, and offline WGSL generation within the 12-storage-buffer limit. Offline generation does not validate shaders on a physical adapter.
+
+Design references: [meshoptimizer cluster hierarchy example](https://github.com/zeux/meshoptimizer/blob/master/demo/clusterlod.h) and [Epic's Nanite documentation](https://dev.epicgames.com/documentation/unreal-engine/nanite-virtualized-geometry-in-unreal-engine). This implementation uses a simpler nested tree.
 
 ## GitHub Pages
 
@@ -33,16 +54,16 @@ Relative asset paths support the repository subdirectory and local preview.
 
 ## Forest stress presets and controls
 
-- **Build forest** regenerates the selected 96-, 256- or 512-tree preset. Desktop defaults to 512 trees and coarse-pointer devices to 256. Presets share nested tree placement, and geometry is never rebuilt by the Nanite on/off toggle.
+- **Build forest** regenerates the selected 96-, 256- or 512-tree preset. Desktop defaults to 512 trees and coarse-pointer devices to 256. Presets share nested tree placement, and source geometry is unchanged when switching modes. The first switch to another optimized mode builds its asset; CPU assets are then cached. Only one optimized GPU pipeline remains resident, and switching preserves camera position.
 - The tree prototype contains roughly 108K triangles. Depending on the preset, the forest represents roughly 11–56 million source triangles including terrain and rocks. Exact counts appear in the interface. Instancing avoids storing dozens of millions of unique vertices.
 - Desktop: click the scene for mouse look; WASD/arrow keys move, Shift sprints, Space jumps, Escape releases the mouse.
 - Mobile: left joystick moves, swiping the scene looks around, and Jump jumps. Walking follows the ground and uses approximate collision against trunks, rocks and the lake boundary.
 - Walking / Orbit camera switches navigation. Reset position returns to the spawn or overview.
 - Nanite view shows meshlet clusters, LODs or normals for the terrain and trees together.
-- FPS and mean ms/frame measure animation-frame cadence, not isolated GPU execution time. Hidden tabs and asset-building periods are excluded; changing Nanite resets the sample. Display refresh rate can cap FPS.
+- FPS and mean ms/frame measure animation-frame cadence, not isolated GPU execution time. Hidden tabs and asset-building periods are excluded; changing geometry mode resets the sample. Display refresh rate can cap FPS.
 - The geometry readout compares padded submitted meshlet triangles with source triangles. Capacity overflow is shown explicitly. A lower triangle count does not guarantee higher FPS; culling and compute have overhead.
-- The lake uses the same opaque animated water material in both modes. It is outside the Nanite asset statistics and is not used to manufacture a geometry speedup. It has no planar reflections or refraction.
-- Experimental previous-frame HZB is disabled in the multi-asset forest map. Frustum culling, normal-cone culling and per-group LOD selection remain active.
+- The lake uses the same opaque animated water material in all three modes. It is outside the Nanite asset statistics and is not used to manufacture a geometry speedup. It has no planar reflections or refraction.
+- Experimental previous-frame HZB is disabled in the multi-asset forest map. Frustum culling, normal-cone culling and the selected geometry algorithm remain active.
 - The forest reserves 32,768 visible tree meshlets plus 8,192 terrain meshlets. The fixed dummy vertex buffers consume approximately 90 MiB combined. GPU assets and baseline buffers require additional memory.
 - Terrain sample uses the selected density for 256², 512² or 1024² grid subdivisions. Mesh stress test retains its original 49/196-instance grid.
 - WebGPU and 12 storage buffers per shader stage are still required. This is a procedural rendering stress test, not a complete game or a claim of photorealistic rendering.
@@ -92,6 +113,7 @@ npm test
 
 ```text
 src/
+  buildHierarchyAsset.js     Recursive parent construction and CPU reference traversal
   partitionMeshlets.js        Spatial leaf grouping and conservative boundary locks
   main.js                    Application bootstrap, camera and GLB loading
   gameScene.js               Terrain, forest, natural scenery, colors and collision layout
@@ -114,10 +136,10 @@ docs/
 
 ### Asset build
 
-`buildNaniteLiteAsset()` performs the following work in the browser:
+For **Auto LOD**, `buildNaniteLiteAsset()` performs the following work in the browser:
 
 1. Validates and copies the source attributes and triangle indices.
-2. Builds 64/64 leaf meshlets and spatially partitions them into groups of at most 16.
+2. Builds 64/64 leaf meshlets and spatially partitions them into groups of at most 16 (64 for terrain and trees).
 3. Locks shared-position vertices across groups, plus explicit open/non-manifold and attribute-seam borders.
 4. Builds six index-only LODs independently for each group with accumulated simplification error.
 5. Re-clusters each group LOD and packs bounds, cones and indices into shared buffers.
@@ -127,7 +149,7 @@ Every group chooses its own LOD on the GPU. All levels share the original vertex
 
 ### GPU frame
 
-Each frame executes:
+The Auto LOD frame executes the following sequence. Nanite replaces the first two selection stages with recursive GPU hierarchy traversal:
 
 ```text
 clear counters
@@ -162,8 +184,8 @@ It then reads `(instanceId, clusterId)` from the compacted visible list, pulls t
 
 This prototype is intentionally honest about what it does not implement:
 
-- It uses **independent boundary-locked patch LOD chains**, not a recursive cluster DAG. Locked boundaries limit coarse reduction; the next step is merging groups into simplified parents.
-- All generated geometry is fully resident in GPU memory.
+- Auto LOD uses independent patch chains; Nanite uses a recursive binary tree. Neither implements a repartitioned cluster DAG.
+- The active mode’s generated geometry is fully resident in GPU memory; inactive mode assets are cached on the CPU.
 - It does not stream geometry pages.
 - It uses hardware rasterization only; there is no specialised compute path for sub-pixel triangles.
 - One material is used per Nanite Lite draw. The game scene uses vertex colors; the mesh stress test uses a procedural checker. Imported material assignments remain unsupported.
@@ -171,7 +193,7 @@ This prototype is intentionally honest about what it does not implement:
 - Skinned meshes, morph targets, transparency, transmission and runtime vertex displacement are unsupported.
 - Instance transforms use uniform scaling, allowing normals and culling bounds to use the same world matrix safely.
 - Occlusion is off by default. The inherited sphere projection is not conservative in all cases and there is no current-frame recovery pass. History is invalidated on camera movement, LOD-threshold changes, viewport changes and occluder visibility changes. Leave it disabled when checking coverage.
-- The fixed visible-list capacity is 16,384 meshlets. The UI displays an overflow warning when it is exceeded.
+- Visible-list capacities are 8,192 terrain and 32,768 tree meshlets in the forest; the mesh test uses 8,192 on mobile or 16,384 on desktop. The UI displays an overflow warning when it is exceeded.
 
 ## Memory note
 
@@ -181,21 +203,11 @@ Reduce `MAX_VISIBLE_CLUSTERS` in `src/config.js` for lower-memory devices. Incre
 
 ## Why the renderer uses 64/64 meshlets
 
-A 64-triangle meshlet maps cleanly to a 64-thread compute workgroup and gives predictable fixed-size expansion for the indirect draw. It is not universally optimal, but it is a reasonable cross-vendor starting point for WebGPU.
+A 64-triangle meshlet gives predictable fixed-size expansion for the indirect draw. Compute workgroup size is independent of cluster triangle count in these traversal paths. It is not universally optimal, but it is a reasonable cross-vendor starting point for WebGPU.
 
-## Moving toward a real hierarchy
+## Further hierarchy work
 
-The next architectural step is replacing the independent group chains with a recursive cluster hierarchy:
-
-1. Build leaf meshlets.
-2. Partition topologically and spatially adjacent meshlets into groups.
-3. Simplify each group while locking the external boundary.
-4. Re-cluster the simplified parent representation.
-5. Repeat until a small root representation remains.
-6. Traverse nodes on the GPU with ping-pong queues.
-7. Render a resident parent when requested child pages are unavailable.
-
-See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+The recursive resident tree is implemented. Next steps are parallel traversal queues, adjacency-aware cluster repartitioning and streamed pages with resident-parent fallback. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Credits
 
@@ -210,4 +222,4 @@ Both dependencies are installed through npm and retain their own licences.
 
 `npm test` checks exact full-resolution triangle coverage and winding, unchanged boundary edges at every group LOD, valid indices and enclosing group bounds, monotonic error/counts, deterministic builds, malformed input rejection, and WebGPU near-plane frustum extraction.
 
-The production build and CPU tests were run in the hosted workspace. Browser shader compilation and visual WebGPU behavior have not been verified there: no local browser executable is installed. These tests do not establish rendering performance or general crack-free behavior for arbitrary malformed/non-manifold imports.
+The production build, CPU tests and offline TSL-to-WGSL generation were run in the hosted workspace. Physical-device shader validation and visual WebGPU behavior remain unverified; the available test browser has no WebGPU. These tests do not establish rendering performance or general crack-free behavior for arbitrary malformed/non-manifold imports.

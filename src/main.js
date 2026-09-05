@@ -8,6 +8,7 @@ import {
   buildNaniteLiteAsset,
   normaliseGeometry
 } from './buildNaniteLiteAsset.js';
+import { buildHierarchyAsset } from './buildHierarchyAsset.js';
 import { NaniteLiteRenderer } from './NaniteLiteRenderer.js';
 import { DemoUI } from './ui.js';
 import { createGameScene } from './gameScene.js';
@@ -23,13 +24,33 @@ let renderer;
 let camera;
 let controls;
 let pipeline = null;
+let activeSource = null;
+let activeMode = null;
 let rebuildGeneration = 0;
 let gameControls = null;
 let activeWorld = null;
 let sceneBuilding = true;
 let lastFrameAt = null;
 const frameMeter = new FrameMeter(sample => ui.updateFps(sample));
-ui.onRenderModeChange = () => { frameMeter.reset(); ui.clearFps(); };
+ui.onRenderModeChange = async () => {
+  frameMeter.reset(); ui.clearFps();
+  if (!activeSource || sceneBuilding) return;
+  const mode = ui.elements.renderMode.value;
+  if (mode === 'full' || mode === activeMode) {
+    pipeline.setNaniteEnabled(mode !== 'full');
+    ui.syncRendererControls();
+    return;
+  }
+  try {
+    await rebuildScene(activeSource.geometry, activeSource.displayName, activeSource.world, true);
+  } catch (error) {
+    ui.elements.renderMode.value = activeMode;
+    ui.bindPipeline(pipeline);
+    ui.hideLoading(); sceneBuilding = false;
+    gameControls?.setEnabled(!controls.enabled);
+    window.alert(`Unable to build ${mode}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
 const mobileProfile = window.matchMedia('(pointer: coarse)').matches;
 const pixelRatioLimit = mobileProfile ? 1 : 2;
 ui.elements.geometryDensity.value = mobileProfile ? 'high' : 'ultra';
@@ -102,20 +123,25 @@ async function geometryFromGlb(file) {
   }
 }
 
-async function rebuildScene(geometry, displayName, world = null) {
+async function rebuildScene(geometry, displayName, world = null, preserveCamera = false) {
+  const mode = ui.elements.renderMode.value === 'auto' || ui.elements.renderMode.value === 'full' ? 'auto' : 'nanite';
+  const sourceRecord = preserveCamera ? activeSource : { geometry, displayName, world, assets: new Map() };
+  const wasWalking = gameControls?.enabled;
   const generation = ++rebuildGeneration;
   sceneBuilding = true;
   frameMeter.reset();
   ui.clearFps();
   gameControls?.setEnabled(false);
 
-  ui.showLoading('Building Nanite Lite asset', 'Preparing source geometry…');
+  ui.showLoading(`Building ${mode === 'nanite' ? 'Nanite hierarchy' : 'Auto LOD'}`, 'Preparing source geometry…');
   ui.setAssetName(displayName);
 
   // Yield once so the loading overlay is painted before CPU-side mesh building.
   await new Promise((resolve) => requestAnimationFrame(resolve));
 
-  const asset = await buildNaniteLiteAsset(geometry, {
+  const buildAsset = mode === 'nanite' ? buildHierarchyAsset : buildNaniteLiteAsset;
+  const cached = sourceRecord.assets.get(mode);
+  const asset = cached?.asset ?? await buildAsset(geometry, {
     meshletsPerGroup: world ? 64 : 16,
     onProgress(title, detail) {
       if (generation === rebuildGeneration) ui.updateLoading(title, detail);
@@ -126,14 +152,15 @@ async function rebuildScene(geometry, displayName, world = null) {
 
   let nextPipeline;
   if (world?.forest) {
-    const treeAsset = await buildNaniteLiteAsset(world.treeGeometry, {
+    const treeAsset = cached?.treeAsset ?? await buildAsset(world.treeGeometry, {
       meshletsPerGroup: 64,
       onProgress(title, detail) { ui.updateLoading(`Forest · ${title}`, detail); }
     });
     if (generation !== rebuildGeneration) { geometry.dispose(); world.treeGeometry.dispose(); return; }
     nextPipeline = new ForestRenderer(renderer, camera, asset, treeAsset, world, stats => ui.updateStats(stats));
-    world.treeGeometry.dispose();
+    sourceRecord.assets.set(mode, { asset, treeAsset });
   } else {
+    sourceRecord.assets.set(mode, { asset });
     nextPipeline = new NaniteLiteRenderer(renderer, camera, asset, {
     sourceGeometry: geometry,
     gridSize: world ? 1 : mobileProfile ? 7 : 14,
@@ -146,19 +173,25 @@ async function rebuildScene(geometry, displayName, world = null) {
 
   pipeline?.dispose();
   pipeline = nextPipeline;
-  gameControls?.dispose();
-  gameControls = null;
-  activeWorld = world;
-  controls.enabled = !world;
-  if (world) {
-    gameControls = new GameControls(camera, canvas, world, ui.gameElements);
-    gameControls.setEnabled(true);
-  }
-  ui.setGameScene(Boolean(world), Boolean(world?.forest));
-  geometry.dispose();
-  ui.createLodBars(asset.lods.length);
+  activeMode = mode;
+  if (!preserveCamera) {
+    if (activeSource) {
+      activeSource.geometry.dispose(); activeSource.world?.treeGeometry?.dispose();
+    }
+    gameControls?.dispose();
+    gameControls = null;
+    activeWorld = world;
+    controls.enabled = !world;
+    if (world) {
+      gameControls = new GameControls(camera, canvas, world, ui.gameElements);
+      gameControls.setEnabled(true);
+    }
+    ui.setGameScene(Boolean(world), Boolean(world?.forest));
+  } else gameControls?.setEnabled(wasWalking);
+  activeSource = sourceRecord;
   ui.bindPipeline(pipeline);
-  resetCamera();
+  ui.createLodBars(asset.lods.length);
+  if (!preserveCamera) resetCamera();
   ui.hideLoading();
   sceneBuilding = false;
   frameMeter.reset();

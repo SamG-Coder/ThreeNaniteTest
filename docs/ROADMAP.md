@@ -1,3 +1,9 @@
+# Current hierarchy milestone
+
+Implemented: separate Auto LOD / Full resolution / Nanite (experimental) controls; recursive boundary-preserving parent construction in meshoptimizer WASM; stackless GPU screen-space traversal; cut/coverage/boundary regression tests; offline WGSL generation.
+
+Next performance work: device profiling, parallel work queues for large single assets, tighter error bounds, cluster repartitioning into a DAG, worker/offline preprocessing and streamed residency. WASM does not remove WebGPU limits. The earlier roadmap below remains historical context; independent patch chains are now named Auto LOD.
+
 # Roadmap to a fuller Nanite-style renderer
 
 The current project proves the WebGPU plumbing. The next work should change the asset and traversal model, not add visual polish first.

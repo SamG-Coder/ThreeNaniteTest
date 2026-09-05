@@ -19,17 +19,21 @@
       </header>
 
       <nav class="quick-controls glass" aria-label="View controls">
-        <label class="toggle"><input id="nanite-enabled" type="checkbox" checked /><span>Nanite</span></label>
+        <label class="mode-select"><span>Geometry</span><select id="render-mode" aria-label="Geometry rendering mode">
+          <option value="full">Full resolution</option>
+          <option value="auto">Auto LOD</option>
+          <option value="nanite" selected>Nanite (experimental)</option>
+        </select></label>
         <label class="toggle"><input id="nanite-view" type="checkbox" /><span>Nanite view</span></label>
         <button id="panel-toggle" type="button" aria-controls="controls-panel" aria-expanded="true">Controls</button>
-        <div class="live-readout"><span id="mode-description" role="status">Nanite on · shaded</span>
+        <div class="live-readout"><span id="mode-description" role="status">Nanite (experimental) · shaded</span>
           <span class="fps-readout" title="Animation-frame cadence; not GPU execution time"><strong id="fps-value">—</strong> FPS <span id="frame-ms">— ms</span></span><span id="geometry-readout" class="geometry-readout">Preparing geometry…</span></div>
       </nav>
 
       <aside id="controls-panel" class="panel glass" aria-label="Nanite Lite controls">
         <section>
           <h2>Renderer</h2>
-          <p class="muted">FPS measures frame cadence. Lake shading stays identical in both modes. Nanite off renders the full-resolution source. Nanite view shows the selected visualization.</p>
+          <p class="muted">FPS measures frame cadence. Compare Full resolution, Auto LOD and Nanite (experimental). Nanite refines a cluster hierarchy by pixel error. Lake shading stays identical.</p>
 
           <label class="field">
             <span>Nanite visualization</span>
@@ -77,7 +81,7 @@
             <button id="navigation-mode" type="button" aria-pressed="true">Walking</button>
           </div>
           <div id="asset-name" class="asset-name">Terrain sample</div>
-          <p class="muted">Load a binary glTF. The largest mesh is normalised and rebuilt into boundary-locked meshlet groups in the browser.</p>
+          <p class="muted">Load a binary glTF. The largest mesh is normalised and rebuilt for the selected geometry mode in the browser.</p>
           <label class="file-button">
             <input id="asset-file" type="file" accept=".glb,model/gltf-binary" />
             Load .glb
@@ -89,7 +93,7 @@
           <h2>GPU statistics</h2>
           <dl class="stats-grid">
             <div><dt>Source triangles</dt><dd id="stat-source-triangles">—</dd></div>
-            <div><dt>Groups per asset</dt><dd id="stat-groups">—</dd></div>
+            <div><dt>Groups / hierarchy nodes</dt><dd id="stat-groups">—</dd></div>
             <div><dt>Instances</dt><dd id="stat-instances">—</dd></div>
             <div><dt>Source scene</dt><dd id="stat-source-scene">—</dd></div>
             <div><dt>Visible meshlets</dt><dd id="stat-visible-meshlets">—</dd></div>
