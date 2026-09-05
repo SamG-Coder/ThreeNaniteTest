@@ -617,7 +617,9 @@ export class NaniteLiteRenderer {
           if (asset.hierarchy) {
             const traversal = groupLodBuffer.element(groupId.mul(6).add(1));
             lodLevel.assign(uint(traversal.z));
-            const refine = lodData.x.mul(scale).mul(pixelFactor).greaterThan(lodThresholdUniform);
+            const errorLimit = asset.voxelRoot ? lodThresholdUniform.toVar() : lodThresholdUniform;
+            if(asset.voxelRoot)If(groupId.equal(0),()=>{errorLimit.assign(min(lodThresholdUniform,1.0));});
+            const refine = lodData.x.mul(scale).mul(pixelFactor).greaterThan(errorLimit);
             // Full source detail near the camera; only the explicit voxel root
             // may approximate distant trees in the voxel experiment.
             const needsRefinement = this.fullGeometry && asset.voxelRoot ? refine.or(groupId.greaterThan(0)) : refine;

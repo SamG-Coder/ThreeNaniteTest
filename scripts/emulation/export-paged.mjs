@@ -1,3 +1,4 @@
+import { depthOrderWGSL } from '../../src/streaming/depthOrder.js';
 // Repack an existing emulation export, retaining exactly the same cluster IDs,
 // matrices, selection and camera. This isolates GPU page decoding from LOD.
 import { readFileSync, writeFileSync, cpSync, mkdirSync } from 'node:fs';
@@ -10,7 +11,7 @@ const read=(name,Type)=>{const b=readFileSync(`${input}/${name}.bin`);return new
 const params=read('params',Uint32Array);
 for(let i=0;i<2;i++){
  const v=read(`${i}-vertices`,Float32Array),idx=read(`${i}-indices`,Uint32Array),count=m.clusterCounts[i];
- const asset={vertices:new Float32Array(v.length/3),normals:new Float32Array(v.length/3),indices:idx};
+ const asset={vertices:new Float32Array(v.length/3),normals:new Float32Array(v.length/3),indices:idx,coverage:Float32Array.from({length:v.length/12},(_,j)=>v[j*12+11])};
  for(let j=0;j<v.length/12;j++){asset.vertices.set(v.subarray(j*12,j*12+4),j*4);asset.normals.set(v.subarray(j*12+4,j*12+8),j*4);}
  const colors={getX:j=>v[j*12+8],getY:j=>v[j*12+9],getZ:j=>v[j*12+10]};
  const pages=new Uint32Array(count*PAGE_WORDS),table=new Uint32Array(count*4);
@@ -18,5 +19,6 @@ for(let i=0;i<2;i++){
  writeFileSync(`${out}/${i}-vertices.bin`,pages);writeFileSync(`${out}/${i}-indices.bin`,table);
 }
 writeFileSync(`${out}/visibility.wgsl`,pagedVisibilityWGSL);
+writeFileSync(`${out}/depth-order.wgsl`,depthOrderWGSL);
 m.paged=true;writeFileSync(`${out}/manifest.json`,JSON.stringify(m,null,2));
 console.log('Exported lossless paged visibility',out);

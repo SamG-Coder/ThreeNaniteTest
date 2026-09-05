@@ -73,6 +73,7 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
       if(indirect)p.dispatchWorkgroupsIndirect(this.argumentsBuffer,32);else p.dispatchWorkgroups(x,y);p.end();
     };
     const draw=(phase)=>{
+      this.beforeVisibilityDraw?.(encoder,phase);
       const p=encoder.beginRenderPass({label:phase?'Visibility recovery':'Visibility seed',colorAttachments:[{view:this.renderer.backend.get(this.ids).texture.createView(),clearValue:{r:0xffffffff,g:0,b:0,a:0},loadOp:phase?'load':'clear',storeOp:'store'}],depthStencilAttachment:{view:this.hardwareDepth.createView(),depthClearValue:1,depthLoadOp:phase?'load':'clear',depthStoreOp:'store'}});
       p.setPipeline(this.visibilityPipeline);p.setBindGroup(0,this.drawGroups[phase]);p.drawIndirect(this.argumentsBuffer,phase*16);p.end();
     };

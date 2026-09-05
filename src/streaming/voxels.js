@@ -1,3 +1,4 @@
+import { clipToCell, addProjectedCoverage, projectedCoverage } from './coverage.js';
 import * as THREE from 'three/webgpu';
 import { buildGroupAsset } from '../buildNaniteLiteAsset.js';
 
@@ -19,8 +20,10 @@ export function triangleBoxOverlap(a,b,c,centre,half) {
 }
 export function voxelizeSurface(geometry,cell=.4){
   const positions=geometry.attributes.position,colors=geometry.attributes.color,normals=geometry.attributes.normal;
+  const foliage=geometry.attributes.foliage;
   const index=geometry.index.array,cells=new Map(),key=(x,y,z)=>`${x},${y},${z}`;
   for(let t=0;t<index.length;t+=3){
+    if(foliage&&foliage.getX(index[t])===0)continue;
     const ids=[index[t],index[t+1],index[t+2]],v=ids.map(i=>[positions.getX(i),positions.getY(i),positions.getZ(i)]);
     const lo=[0,1,2].map(d=>Math.floor(Math.min(...v.map(p=>p[d]))/cell)),hi=[0,1,2].map(d=>Math.floor(Math.max(...v.map(p=>p[d]))/cell));
     const color=colors?[0,1,2].map(d=>ids.reduce((n,i)=>n+colors.array[i*3+d],0)/3):[.3,.5,.3];
@@ -28,11 +31,12 @@ export function voxelizeSurface(geometry,cell=.4){
     for(let z=lo[2];z<=hi[2];z++)for(let y=lo[1];y<=hi[1];y++)for(let x=lo[0];x<=hi[0];x++){
       if(!triangleBoxOverlap(...v,[(x+.5)*cell,(y+.5)*cell,(z+.5)*cell],cell/2))continue;
       const k=key(x,y,z);let entry=cells.get(k);
-      if(!entry){entry={xyz:[x,y,z],color:[0,0,0],normal:[0,0,0],count:0};cells.set(k,entry);}
+      if(!entry){entry={xyz:[x,y,z],color:[0,0,0],normal:[0,0,0],masks:new Uint32Array(6),count:0};cells.set(k,entry);}
+      addProjectedCoverage(entry.masks,clipToCell(v,[x*cell,y*cell,z*cell],cell),[x*cell,y*cell,z*cell],cell);
       entry.count++;for(let d=0;d<3;d++){entry.color[d]+=color[d];entry.normal[d]+=normal[d];}
     }
   }
-  const p=[],n=[],c=[],indices=[];
+  const p=[],n=[],c=[],coverage=[],indices=[];
   // Exposed faces only. Cubes are an explicit hardware emulation of voxel
   // rasterization, not Epic's brick ray traversal or stochastic normal model.
   const faces=[
@@ -44,13 +48,33 @@ export function voxelizeSurface(geometry,cell=.4){
     [[0,0,-1],[[0,0,0],[0,1,0],[1,1,0],[1,0,0]]]
   ];
   for(const entry of cells.values())for(const [axis,corners] of faces){
-    const xyz=entry.xyz;if(cells.has(key(...xyz.map((v,i)=>v+axis[i]))))continue;
+    const xyz=entry.xyz,direction=axis.findIndex(v=>v!==0);
+    const alpha=projectedCoverage(entry.masks,direction);if(alpha===0)continue;
+    const neighbour=cells.get(key(...xyz.map((v,i)=>v+axis[i])));
+    if(alpha===1&&neighbour&&projectedCoverage(neighbour.masks,direction)===1)continue;
     const base=p.length/3,length=Math.hypot(...entry.normal);
-    for(const corner of corners){p.push(...xyz.map((v,i)=>(v+corner[i])*cell));n.push(...(length>1e-8?entry.normal.map(v=>v/length):axis));c.push(...entry.color.map(v=>v/entry.count));}
+    for(const corner of corners){coverage.push(alpha);p.push(...xyz.map((v,i)=>(v+corner[i])*cell));n.push(...(length>1e-8?entry.normal.map(v=>v/length):axis));c.push(...entry.color.map(v=>v/entry.count));}
     indices.push(base,base+1,base+2,base,base+2,base+3);
+  }
+  // Preserve every original wood triangle, including its position and material.
+  // Reuse source vertices instead of voxelizing opaque structural geometry.
+  if(foliage){
+    const remap=new Map();
+    for(let t=0;t<index.length;t+=3){if(foliage.getX(index[t])!==0)continue;
+      for(let corner=0;corner<3;corner++){
+        const source=index[t+corner];
+        if(!remap.has(source)){
+          remap.set(source,p.length/3);p.push(positions.getX(source),positions.getY(source),positions.getZ(source));
+          n.push(normals.getX(source),normals.getY(source),normals.getZ(source));
+          c.push(colors.getX(source),colors.getY(source),colors.getZ(source));coverage.push(1);
+        }
+        indices.push(remap.get(source));
+      }
+    }
   }
   const result=new THREE.BufferGeometry();
   for(const [name,values] of [['position',p],['normal',n],['color',c]])result.setAttribute(name,new THREE.Float32BufferAttribute(values,3));
+  result.setAttribute('coverage',new THREE.Float32BufferAttribute(coverage,1));
   result.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(p.length/3*2),2));result.setIndex(indices);
   result.userData={cell,occupiedCells:cells.size};return result;
 }
@@ -69,6 +93,7 @@ export async function addVoxelRoot(asset,geometry,cell=.4){
   // Averaged leaf normals describe shading, not reliable backface cones.
   for(let i=clusterOffset;i<result.clusterConeApex.length/4;i++)result.clusterConeApex[i*4+3]=-1;
   result.totalClusters=clusterOffset+coarse.totalClusters;
+  result.coverage=merge(new Float32Array(asset.vertexCount).fill(1),voxel.attributes.coverage.array);
   result.sourceColors=new THREE.BufferAttribute(merge(geometry.attributes.color.array,voxel.attributes.color.array),3);
   const oldNodes=asset.hierarchy?asset.groupCount:asset.groupCount*6;
   result.groupCount=oldNodes+1;result.groupLods=new Float32Array(result.groupCount*24);result.groupBounds=new Float32Array(result.groupCount*4);

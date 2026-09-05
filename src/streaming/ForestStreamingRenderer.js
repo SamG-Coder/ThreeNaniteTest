@@ -1,9 +1,30 @@
+import { depthOrderWGSL } from './depthOrder.js';
 import { ForestVisibilityRenderer } from '../visibility/ForestVisibilityRenderer.js';
 import { PAGE_WORDS, packPage, pageLayout, PageCache } from './pages.js';
-import { pagedVisibilityWGSL } from './shaders.js';
+import { pagedVisibilityWGSL, pagedOpaqueVisibilityWGSL } from './shaders.js';
 
 export class ForestStreamingRenderer extends ForestVisibilityRenderer {
-  get geometryWGSL(){return pagedVisibilityWGSL;}
+  async init(){
+    await super.init();
+    const module=this.device.createShaderModule({code:depthOrderWGSL});this.depthPipelines=[];
+    for(const entryPoint of ['orderSeed','orderRecovery'])this.depthPipelines.push(await this.device.createComputePipelineAsync({layout:'auto',compute:{module,entryPoint}}));
+    if(this.forest.trees.asset.voxelRoot){const note=document.createElement('p');note.textContent='Distant foliage preserves partial coverage, with a maximum one-pixel error. Trunks and branches remain opaque.';this.panel.prepend(note);}
+    this.depthOrdering=false;
+    const label=document.createElement('label');label.className='field';label.textContent='GPU front-to-back cluster ordering (experimental)';
+    const toggle=document.createElement('input');toggle.type='checkbox';toggle.onchange=()=>{this.depthOrdering=toggle.checked;this.resetHistory=true;};label.append(toggle);this.panel.prepend(label);
+  }
+  createGroups(){
+    super.createGroups();
+    const resources={0:this.uniform,1:this.bounds[0],2:this.bounds[1],11:this.control,18:this.seedList,19:this.recoveryList};
+    this.forest.pipelines.forEach((p,i)=>{resources[3+i*4]=this.sharedBuffer(p.instanceWorldAttribute);resources[4+i*4]=this.sharedBuffer(p.visibleClustersAttribute);});
+    this.depthGroups=this.depthPipelines.map(p=>this.device.createBindGroup({layout:p.getBindGroupLayout(0),entries:Object.entries(resources).map(([binding,buffer])=>({binding:Number(binding),resource:{buffer}}))}));
+  }
+  beforeVisibilityDraw(encoder,phase){
+    if(!this.depthOrdering)return;
+    const pass=encoder.beginComputePass({label:'Local front-to-back cluster order'});
+    pass.setPipeline(this.depthPipelines[phase]);pass.setBindGroup(0,this.depthGroups[phase]);pass.dispatchWorkgroupsIndirect(this.argumentsBuffer,32);pass.end();
+  }
+  get geometryWGSL(){return this.forest.pipelines.some(p=>p.asset.coverage)?pagedVisibilityWGSL:pagedOpaqueVisibilityWGSL;}
   createAssets(){
     this.pagers=[];this.requestPending=false;this.lastDemand=-Infinity;
     this.frameUploadBytes=0;this.totalUploadBytes=0;

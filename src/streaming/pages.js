@@ -12,6 +12,8 @@ export function packPage(asset, colors, cluster) {
       const n = local.size;
       if (n >= 64) throw new Error('Meshlet exceeds the 64-vertex page format');
       local.set(vertex, n);
+      const alpha=Math.round(Math.max(0,Math.min(1,asset.coverage?.[vertex]??1))*255);
+      words[624+(n>>>2)]|=alpha<<((n&3)*8);
       const offset = 48 + n * 9;
       floats.set(asset.vertices.subarray(vertex * 4, vertex * 4 + 3), offset);
       floats.set(asset.normals.subarray(vertex * 4, vertex * 4 + 3), offset + 3);
@@ -45,7 +47,9 @@ export function pageLayout(asset) {
       units.push({id:node,pages:Array.from({length:5},(_,level)=>clusters(node,level)).flat(),children:[],parent:-1});
     }
   }
-  return {pinned,units};
+  const pinnedUnits=asset.voxelRoot?[0]:[];
+  if(asset.voxelRoot){pinned.push(...units[0].pages);units[0].pages=[];}
+  return {pinned,units,pinnedUnits};
 }
 // Residency is published per complete replacement group. An incomplete upload
 // can never become selectable. Hierarchy parents remain resident during descent.
@@ -54,7 +58,7 @@ export class PageCache {
     this.asset=asset;this.layout=pageLayout(asset);this.upload=upload;this.publish=publish;
     this.capacity=Math.max(slots,this.layout.pinned.length);
     this.free=Array.from({length:this.capacity},(_,i)=>this.capacity-1-i);
-    this.mapping=new Map();this.resident=new Set();this.lastUsed=new Map();this.requested=new Map();
+    this.mapping=new Map();this.resident=new Set(this.layout.pinnedUnits);this.lastUsed=new Map();this.requested=new Map();
     this.clock=0;this.pending=null;this.evictions=0;this.uploadedBytes=0;
     for(const page of this.layout.pinned)this.load(page);
     this.publish(this.resident);
@@ -65,7 +69,7 @@ export class PageCache {
     priorities.forEach((priority,id)=>{if(priority){this.requested.set(id,priority);this.lastUsed.set(id,this.clock);}});
   }
   evictFor(count) {
-    const candidates=[...this.resident].filter(id=>!this.requested.has(id)&&!this.layout.units[id].children.some(child=>this.resident.has(child)))
+    const candidates=[...this.resident].filter(id=>!this.layout.pinnedUnits.includes(id)&&!this.requested.has(id)&&!this.layout.units[id].children.some(child=>this.resident.has(child)))
       .sort((a,b)=>(this.lastUsed.get(a)??0)-(this.lastUsed.get(b)??0));
     for(const id of candidates){
       if(this.free.length>=count)break;

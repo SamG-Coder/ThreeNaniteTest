@@ -5,7 +5,7 @@ camera changes. This exercises hardware rasterization, not the old tile emulator
 import argparse,json,struct,math,hashlib,time
 from pathlib import Path
 import wgpu
-p=argparse.ArgumentParser();p.add_argument('directory');p.add_argument('--output');p.add_argument('--frames',type=int,default=3);a=p.parse_args();root=Path(a.directory);m=json.loads((root/'manifest.json').read_text())
+p=argparse.ArgumentParser();p.add_argument('directory');p.add_argument('--output');p.add_argument('--depth-order',action='store_true');p.add_argument('--frames',type=int,default=3);a=p.parse_args();root=Path(a.directory);m=json.loads((root/'manifest.json').read_text())
 adapter=next(x for x in wgpu.gpu.enumerate_adapters_sync() if x.info['adapter_type']=='CPU')
 d=adapter.request_device_sync(required_limits={'max-storage-buffers-per-shader-stage':10});S=wgpu.BufferUsage.STORAGE;C=wgpu.BufferUsage.COPY_SRC|wgpu.BufferUsage.COPY_DST;U=wgpu.BufferUsage.UNIFORM
 make=lambda b,usage:d.create_buffer_with_data(data=b,usage=usage)
@@ -37,6 +37,11 @@ groups['coverage']=group(compute['coverage'],geo,[0,10,13,17]);groups['shadeVisi
 drawgroups=[group(render,{**common,9:lst},[0,1,2,3,4,5,6,7,8,9]) for lst in [seed,recovery]]
 groups['base']=group(compute['base'],{0:depth.create_view(),1:hzb.create_view(base_mip_level=0,mip_level_count=1),2:bits,3:dims},[0,1,2,3])
 reducegroups=[group(compute['reduce'],{0:hzb.create_view(base_mip_level=i,mip_level_count=1),1:hzb.create_view(base_mip_level=i+1,mip_level_count=1)},[0,1]) for i in range(levels-1)]
+if a.depth_order:
+ mod=d.create_shader_module(code=(root/'depth-order.wgsl').read_text())
+ for name in ['orderSeed','orderRecovery']:
+  compute[name]=d.create_compute_pipeline(layout='auto',compute={'module':mod,'entry_point':name})
+  groups[name]=group(compute[name],cull,[0,1,2,3,4,7,8,11,18,19])
 def frame(enabled):
  d.queue.write_buffer(config,0,u32([*clusters,aw,int(enabled)]));e=d.create_command_encoder()
  def dispatch(name,x=1,y=1,bg=None,indirect=False):
@@ -45,6 +50,7 @@ def frame(enabled):
   else:cp.dispatch_workgroups(x,y)
   cp.end()
  def draw(phase):
+  if a.depth_order:dispatch('orderRecovery' if phase else 'orderSeed',indirect=True)
   rp=e.begin_render_pass(color_attachments=[{'view':ids.create_view(),'clear_value':(0xffffffff,0,0,0),'load_op':'load' if phase else 'clear','store_op':'store'}],depth_stencil_attachment={'view':depth.create_view(),'depth_clear_value':1,'depth_load_op':'load' if phase else 'clear','depth_store_op':'store'})
   rp.set_pipeline(render);rp.set_bind_group(0,drawgroups[phase]);rp.draw_indirect(args,phase*16);rp.end()
  dispatch('clearFrame',(max(16,tx*ty*2)+63)//64);dispatch('arguments');dispatch('seed',indirect=True);dispatch('arguments');draw(0)
@@ -54,7 +60,7 @@ def frame(enabled):
  start=time.monotonic();d.queue.submit([e.finish()]);c=struct.unpack('<16I',d.queue.read_buffer(control));elapsed=time.monotonic()-start
  def read(t,bpp):return bytes(d.queue.read_texture({'texture':t},{'bytes_per_row':width*bpp,'rows_per_image':height},(width,height,1)))
  return {'enabled':enabled,'seed':c[2],'recovery':c[3],'culled':c[5],'covered':c[4],'wallMs':elapsed*1000},read(outdepth,4),read(ids,4),read(color,8)
-report={'adapter':dict(adapter.info),'manifest':m,'limitations':['Software Vulkan, not phone timing','Uses exported CPU-selected cluster lists; Three selection is outside harness','Hardware coplanar ties can pick different IDs after list reordering'],'frames':[]}
+report={'depthOrdering':a.depth_order,'adapter':dict(adapter.info),'manifest':m,'limitations':['Software Vulkan, not phone timing','Uses exported CPU-selected cluster lists; Three selection is outside harness','Hardware coplanar ties can pick different IDs after list reordering'],'frames':[]}
 # Keep history across frames/camera changes. Baselines also update it, so save
 # and restore the real prior-frame bitset around each unculled reference draw.
 for i in range(a.frames):
@@ -73,6 +79,12 @@ for i in range(a.frames):
  rd=struct.unpack('<'+'f'*(width*height),reference[1]);ad=struct.unpack('<'+'f'*(width*height),actual[1])
  diff=max(abs(x-y) for x,y in zip(rd,ad));holes=sum((x==1)!=(y==1) for x,y in zip(rd,ad))
  result={**actual[0],'frame':i,'depthMaxDifference':diff,'coverageMismatches':holes,'idMismatches':sum(reference[2][j:j+4]!=actual[2][j:j+4] for j in range(0,len(actual[2]),4)),'colorMismatches':sum(reference[3][j:j+8]!=actual[3][j:j+8] for j in range(0,len(actual[3]),8)),'depthSHA256':hashlib.sha256(actual[1]).hexdigest()}
+ if 'coverageFixture' in m and i<3:
+  tokens=struct.unpack('<'+'I'*(width*height),actual[2])
+  foreground=sum(t<64 for t in tokens);behind=sum(64<=t<128 for t in tokens)
+  result['maskedForegroundPixels']=foreground;result['behindFoliagePixels']=behind
+  if m['coverageFixture']==0 and foreground:raise RuntimeError('Transparent foliage wrote visibility/depth')
+  if m['coverageFixture']==0.25 and not (100<foreground<800 and behind>0):raise RuntimeError('Partial coverage lost holes or rear surface')
  report['frames'].append(result);print(result,flush=True)
  if diff>2e-6 or holes:raise RuntimeError('HZB removed visible geometry')
 Path(a.output or root/'visibility-results.json').write_text(json.dumps(report,indent=2))

@@ -52,10 +52,12 @@ export function createDetailedTree() {
       g.scale(.24+random()*.13,.012,.085+random()*.04);
       g.rotateZ((random()-.5)*1.6);g.rotateY(random()*Math.PI*2);
       g.translate(...position.toArray());
+      g.userData.foliage=true;
       parts.push(tint(g,leaf%3===0?0x738747:leaf%3===1?0x3e633c:0x557b45,.06));
     }
 
   }
+  for(const part of parts)part.setAttribute('foliage',new THREE.Float32BufferAttribute(new Float32Array(part.attributes.position.count).fill(part.userData.foliage?1:0),1));
   const merged=mergeGeometries(parts,false);
   for(const part of parts) part.dispose();
   // Vertex colors provide the tree material. Unused UV seams would otherwise

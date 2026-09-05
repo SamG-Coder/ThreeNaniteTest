@@ -1,0 +1,102 @@
+{
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 65,
+    "height": 49,
+    "capacity": [
+      4,
+      0
+    ],
+    "clusterCounts": [
+      4,
+      4
+    ],
+    "instanceCounts": [
+      1,
+      1
+    ],
+    "fixture": "solid occluder, hidden cluster, uncovered gap, near-plane crossing, partial tiles",
+    "coverageFixture": 0.25,
+    "paged": true
+  },
+  "limitations": [
+    "Software Vulkan, not phone timing",
+    "Uses exported CPU-selected cluster lists; Three selection is outside harness",
+    "Hardware coplanar ties can pick different IDs after list reordering"
+  ],
+  "frames": [
+    {
+      "enabled": true,
+      "seed": 0,
+      "recovery": 4,
+      "culled": 0,
+      "covered": 432,
+      "wallMs": 5.070446997706313,
+      "frame": 0,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "bc1ac5f8f5766bc0258cd9954af68ff04717c29744e83bbfabd674c70487262d",
+      "maskedForegroundPixels": 368,
+      "behindFoliagePixels": 7
+    },
+    {
+      "enabled": true,
+      "seed": 4,
+      "recovery": 0,
+      "culled": 0,
+      "covered": 432,
+      "wallMs": 2.012835997447837,
+      "frame": 1,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "bc1ac5f8f5766bc0258cd9954af68ff04717c29744e83bbfabd674c70487262d",
+      "maskedForegroundPixels": 368,
+      "behindFoliagePixels": 7
+    },
+    {
+      "enabled": true,
+      "seed": 4,
+      "recovery": 0,
+      "culled": 0,
+      "covered": 458,
+      "wallMs": 1.9424310012254864,
+      "frame": 2,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "6a17e15edf66f008d18f16dc20da594b8ec176f26bfb9297f4324ad3983c63e8",
+      "maskedForegroundPixels": 385,
+      "behindFoliagePixels": 10
+    },
+    {
+      "enabled": true,
+      "seed": 4,
+      "recovery": 0,
+      "culled": 0,
+      "covered": 80,
+      "wallMs": 2.1259819986880757,
+      "frame": 3,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "fbf8c7d3efecf5d85327bb1b67a7ded4e8b5fe0950f5b9d697979a64900c803f"
+    }
+  ]
+}

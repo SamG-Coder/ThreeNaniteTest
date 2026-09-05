@@ -278,3 +278,16 @@ Pages stream from CPU memory with a 256 KiB/frame geometry payload cap; fallback
 stays visible while detail loads. Surface voxels use exposed cube faces, not Epic's
 specialized brick rasterizer. These additions are emulated and tested, but phone
 speedups are unverified. [Implementation, limitations and results](docs/STREAMING_AND_VOXELS.md).
+
+### Foliage coverage correction
+
+The surface-voxel option now preserves opaque trunks/branches and estimates
+partial leaf coverage instead of making every cell solid. Coverage-rejected
+samples write neither depth nor atomic coverage. Voxel error is capped at one
+screen pixel, and a triangle fallback stays resident. The stricter limit can
+keep the visible forest in triangles at mobile resolutions.
+
+Controls also includes an optional **GPU front-to-back cluster ordering** test
+(off by default). This is a bounded GPU sorting experiment inspired by depth
+ordering in Epic's pipeline, not a claimed phone speedup. See the updated
+[coverage and implementation notes](docs/STREAMING_AND_VOXELS.md).

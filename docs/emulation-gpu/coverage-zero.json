@@ -1,0 +1,88 @@
+{
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 65,
+    "height": 49,
+    "capacity": [
+      4,
+      0
+    ],
+    "clusterCounts": [
+      4,
+      4
+    ],
+    "instanceCounts": [
+      1,
+      1
+    ],
+    "fixture": "solid occluder, hidden cluster, uncovered gap, near-plane crossing, partial tiles",
+    "coverageFixture": 0,
+    "paged": true
+  },
+  "limitations": [
+    "Software Vulkan, not phone timing",
+    "Uses exported CPU-selected cluster lists; Three selection is outside harness",
+    "Hardware coplanar ties can pick different IDs after list reordering"
+  ],
+  "frames": [
+    {
+      "enabled": true,
+      "seed": 0,
+      "recovery": 4,
+      "culled": 0,
+      "covered": 80,
+      "wallMs": 11.113895998278167,
+      "frame": 0,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "083ca3ab57ad352120b6072e67ee76af8513e31fad09ebfb2857bc7462e915f2",
+      "maskedForegroundPixels": 0,
+      "behindFoliagePixels": 17
+    },
+    {
+      "enabled": true,
+      "seed": 3,
+      "recovery": 1,
+      "culled": 0,
+      "covered": 80,
+      "wallMs": 2.879489002225455,
+      "frame": 1,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "083ca3ab57ad352120b6072e67ee76af8513e31fad09ebfb2857bc7462e915f2",
+      "maskedForegroundPixels": 0,
+      "behindFoliagePixels": 17
+    },
+    {
+      "enabled": true,
+      "seed": 3,
+      "recovery": 1,
+      "culled": 0,
+      "covered": 80,
+      "wallMs": 2.4399399990215898,
+      "frame": 2,
+      "depthMaxDifference": 0.0,
+      "coverageMismatches": 0,
+      "idMismatches": 0,
+      "colorMismatches": 0,
+      "depthSHA256": "fbf8c7d3efecf5d85327bb1b67a7ded4e8b5fe0950f5b9d697979a64900c803f",
+      "maskedForegroundPixels": 0,
+      "behindFoliagePixels": 15
+    }
+  ]
+}

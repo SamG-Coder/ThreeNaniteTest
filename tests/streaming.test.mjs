@@ -78,7 +78,7 @@ test('voxel root preserves all original indices and complete hierarchy cuts',asy
   while(node<a.groupCount){covered++;const escape=a.groupLods[node*24+4];assert.ok(escape>node&&escape<=a.groupCount);node=escape;}
   assert.equal(covered,a.groupLods[5]);
   const cache=new PageCache(a,a.totalClusters,()=>{},()=>{});
-  assert.equal(cache.metadata()[5],0);cache.request(new Uint32Array(a.groupCount).fill(1));cache.tick(1e9);
+  assert.equal(cache.metadata()[5],a.groupLods[5]);cache.request(new Uint32Array(a.groupCount).fill(1));cache.tick(1e9);
   assert.equal(cache.metadata()[5],a.groupLods[5]);assert.equal(cache.mapping.size,a.totalClusters);
   g.dispose();
  }

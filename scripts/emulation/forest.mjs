@@ -35,7 +35,7 @@ export async function prepareForest({density='high',geometry='full',width=384,he
     const clip=new THREE.Vector4(...sphere.center.toArray(),1).applyMatrix4(vp);
     const distance=Math.max(.01,(asset.hierarchy?clip.w:sphere.center.distanceTo(camera.position))-sphere.radius);
     const factor=camera.projectionMatrix.elements[5]*height/(2*distance);
-    if(asset.hierarchy&&asset.groupLods[offset+5]>0&&(asset.groupLods[offset]*scale*factor>threshold||(asset.voxelRoot&&geometry==='full'&&group>0))){group++;continue;}
+    if(asset.hierarchy&&asset.groupLods[offset+5]>0&&(asset.groupLods[offset]*scale*factor>(asset.voxelRoot&&group===0?Math.min(threshold,1):threshold)||(asset.voxelRoot&&geometry==='full'&&group>0))){group++;continue;}
     if(geometry==='auto'&&!asset.hierarchy)for(let l=5;l>0;l--)if(asset.groupLods[offset+l*4]*scale*factor<=threshold){level=l;break;}
     const start=asset.groupLods[offset+level*4+1],count=asset.groupLods[offset+level*4+2];
     for(let cluster=start;cluster<start+count;cluster++){
@@ -46,6 +46,7 @@ export async function prepareForest({density='high',geometry='full',width=384,he
      const slot=counts['asset'+a]??0;counts['asset'+a]=slot+1;
      if(geometry!=='full'&&slot>=(a?32768:8192)){counts.capacityOverflow=(counts.capacityOverflow??0)+1;continue;}
      selected.push({a,instance,cluster,slot});
+     if(asset.voxelRoot&&cluster>=asset.groupLods[1])counts.voxelRepresentationClusters=(counts.voxelRepresentationClusters??0)+1;
      counts.actualTriangles+=asset.clusterTriangleCounts[cluster];counts.paddedTriangleSlots+=64;
     }
     group=next;
