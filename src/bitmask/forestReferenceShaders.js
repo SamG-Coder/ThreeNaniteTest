@@ -1,6 +1,6 @@
 // Forest renderer: linked tile candidates, 32-triangle mask batches, and one
 // depth/ID owner per pixel. Hardware never resolves terrain/tree visibility.
-export const forestRasterWGSL = /* wgsl */`
+export const forestReferenceWGSL = /* wgsl */`
 const EMPTY:u32=0xffffffffu;
 struct Params {
   matrix:mat4x4<f32>, camera:vec4<f32>, size:vec4<u32>, ranges:vec4<u32>, settings:vec4<u32>
@@ -60,15 +60,11 @@ fn makeTriangle(id:u32)->Triangle {
   var clipped:array<vec4<f32>,4>; var count=0u;
   // Clip in homogeneous coordinates against WebGPU's z >= 0 near plane.
   // This keeps W positive for the app's finite perspective camera.
-  if(s.a.z>=0.0 && s.b.z>=0.0 && s.c.z>=0.0) {
-    clipped[0]=s.a;clipped[1]=s.b;clipped[2]=s.c;count=3u;
-  } else {
-    for(var i=0u;i<3u;i++) {
-      let a=inputPoints[i];let b=inputPoints[(i+1u)%3u];
-      if(a.z>=0.0) { clipped[count]=a;count++; }
-      if((a.z>0.0 && b.z<0.0)||(a.z<0.0 && b.z>0.0)) {
-        var intersection=mix(a,b,a.z/(a.z-b.z));intersection.z=0.0;clipped[count]=intersection;count++;
-      }
+  for(var i=0u;i<3u;i++) {
+    let a=inputPoints[i];let b=inputPoints[(i+1u)%3u];
+    if(a.z>=0.0) { clipped[count]=a;count++; }
+    if((a.z>0.0 && b.z<0.0)||(a.z<0.0 && b.z>0.0)) {
+      var intersection=mix(a,b,a.z/(a.z-b.z));intersection.z=0.0;clipped[count]=intersection;count++;
     }
   }
   var t:Triangle;t.info=s.info;t.color=s.color;t.normal=s.normal;
@@ -150,11 +146,6 @@ fn shade(t:Triangle)->vec3<f32>{
 var<workgroup> batchIds:array<u32,32>;
 var<workgroup> batchTriangles:array<Triangle,32>;
 var<workgroup> pixelMasks:array<atomic<u32>,64>;
-// One writer per triangle/pixel pair. A set mask bit is the validity flag;
-// uncovered slots need no clear. Barrier publishes both mask and depth.
-var<workgroup> sampleDepths:array<f32,2048>;
-var<workgroup> pixelBest:array<f32,64>;
-var<workgroup> tileCovered:atomic<u32>;
 var<workgroup> nextEntry:u32;
 var<workgroup> scanCursor:u32;
 var<workgroup> batchCount:u32;
@@ -162,9 +153,10 @@ var<workgroup> batchCount:u32;
 fn raster(@builtin(workgroup_id) group:vec3<u32>,@builtin(local_invocation_id) local:vec3<u32>){
   let tile=group.y*params.size.z+group.x;
   let coord=vec2<u32>(group.x*8u+local.x%8u,group.y*8u+local.x/8u);
+  let point=vec2<f32>(coord)+vec2<f32>(.5);
   // Every invocation reaches every barrier, including the partial edge tiles.
-  var best=1.0;var winner=EMPTY;var winningTriangle:Triangle;var tileBatches=0u;
-  if(local.x==0u){nextEntry=atomicLoad(&heads[tile*2u]);scanCursor=0u;atomicStore(&tileCovered,0u);}
+  var best=1.0;var winner=EMPTY;var color=vec3<f32>(0.0);
+  if(local.x==0u){nextEntry=atomicLoad(&heads[tile*2u]);scanCursor=0u;}
   workgroupBarrier();
   loop{
     if(local.x==0u){
@@ -180,12 +172,11 @@ fn raster(@builtin(workgroup_id) group:vec3<u32>,@builtin(local_invocation_id) l
           let entry=entries[nextEntry];batchIds[i]=entry.x;nextEntry=entry.y;batchCount++;
         }
       }
-      if(batchCount>0u){tileBatches++;}
+      if(batchCount>0u){atomicAdd(&control[5],1u);}
     }
     let count=workgroupUniformLoad(&batchCount);
     if(count==0u){break;}
     atomicStore(&pixelMasks[local.x],0u);
-    pixelBest[local.x]=best;
     if(local.x<count){batchTriangles[local.x]=makeTriangle(batchIds[local.x]);}
     workgroupBarrier();
     if(local.x<count){
@@ -196,12 +187,8 @@ fn raster(@builtin(workgroup_id) group:vec3<u32>,@builtin(local_invocation_id) l
         let hi=min(min(origin+vec2<i32>(7),vec2<i32>(params.size.xy)-vec2<i32>(1)),
           vec2<i32>(floor(max(max(t.a.xy,t.b.xy),max(t.c.xy,t.d.xy))-vec2<f32>(.5))));
         for(var y=lo.y;y<=hi.y;y++){for(var x=lo.x;x<=hi.x;x++){
-          let z=sampleDepth(t,vec2<f32>(f32(x)+.5,f32(y)+.5));
-          let pixel=u32(y-origin.y)*8u+u32(x-origin.x);
-          // Previous batches already proved these samples are hidden. Keep
-          // equal depths so the lower-ID tie rule remains unchanged.
-          if(z>=0.0 && z<=pixelBest[pixel]){
-            sampleDepths[local.x*64u+pixel]=z;
+          if(sampleDepth(t,vec2<f32>(f32(x)+.5,f32(y)+.5))>=0.0){
+            let pixel=u32(y-origin.y)*8u+u32(x-origin.x);
             atomicOr(&pixelMasks[pixel],1u<<local.x);
           }
         }}
@@ -210,8 +197,8 @@ fn raster(@builtin(workgroup_id) group:vec3<u32>,@builtin(local_invocation_id) l
     workgroupBarrier();
     var bits=atomicLoad(&pixelMasks[local.x]);
     while(bits!=0u){
-      let bit=firstTrailingBit(bits);let t=batchTriangles[bit];let z=sampleDepths[bit*64u+local.x];
-      if(z>=0.0 && (z<best || (z==best && t.info.x<winner))){best=z;winner=t.info.x;winningTriangle=t;}
+      let bit=firstTrailingBit(bits);let t=batchTriangles[bit];let z=sampleDepth(t,point);
+      if(z>=0.0 && (z<best || (z==best && t.info.x<winner))){best=z;winner=t.info.x;color=shade(t);}
       bits=bits&(bits-1u);
     }
     workgroupBarrier();
@@ -219,20 +206,8 @@ fn raster(@builtin(workgroup_id) group:vec3<u32>,@builtin(local_invocation_id) l
   if(coord.x<params.size.x && coord.y<params.size.y){
     textureStore(depthOut,vec2<i32>(coord),vec4<f32>(best));
     textureStore(idOut,vec2<i32>(coord),vec4<u32>(winner));
-    var color=vec3<f32>(0.0);
-    if(winner!=EMPTY){
-      color=shade(winningTriangle);
-      if(params.settings.z!=0u){atomicAdd(&tileCovered,1u);}
-    }
     textureStore(colorOut,vec2<i32>(coord),vec4<f32>(color,1.0));
-  }
-  // Statistics only on readback frames, at most two global adds per tile.
-  if(params.settings.z!=0u){
-    workgroupBarrier();
-    if(local.x==0u){
-      atomicAdd(&control[4],atomicLoad(&tileCovered));
-      atomicAdd(&control[5],tileBatches);
-    }
+    if(winner!=EMPTY){atomicAdd(&control[4],1u);}
   }
 }
 `;

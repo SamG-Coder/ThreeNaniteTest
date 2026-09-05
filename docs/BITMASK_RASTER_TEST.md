@@ -67,3 +67,14 @@ The forest path differs from the small isolated test:
 The bridge uses the pinned Three.js 0.185.1 backend's initialized StorageBufferAttributes and StorageTextures. Changes to Three's backend internals will require revalidation. The bin/raster kernels use 11 storage-buffer bindings and the raster kernel writes 3 storage textures, within the app's requested limits. Raster workgroup memory is below 16 KiB.
 
 Additional tests cover near-plane intersections (including exact endpoints), batch winner persistence beyond 128 candidates, WGSL parsing/emission, disabled hardware geometry draws and submission pacing. Physical-device rendering, water depth composition, queue behavior and performance remain unverified in the hosted workspace. This is an experiment, not a performance claim or a streaming implementation.
+
+
+### First forest optimisation pass
+
+The default shader now caches covered sample depths in an 8 KiB workgroup array. Each triangle invocation writes its own sample slots; only mask-marked slots are read after the barrier. This removes the second edge/depth evaluation during mask resolution. A further 256-byte array publishes each pixel's winning depth from previous batches, so samples already proven hidden skip cache writes, mask atomics and resolution. Equal depths remain eligible for deterministic ID ties.
+
+Lighting runs once for each final covered pixel, after all batches. Triangles entirely in front of the near plane bypass the clipping loop. Global covered-pixel and batch counters are aggregated per tile and updated only on asynchronous statistics sampling frames (at most twice per second). Overflow accounting remains active every frame. Total raster workgroup storage is about 12.2 KiB, below 16 KiB; higher shared-memory use can reduce occupancy on some GPUs, so speed must be measured on the target device.
+
+The original forest WGSL is retained as `forestReferenceShaders.js`. Open `?bitmaskReference=0` for the optimised path or `?bitmaskReference=1` for the original shader. Both links start in the forest's Bitmask Raster mode with the same initial camera and device-selected density/resolution. The geometry readout identifies the variant after the first statistics readback. Use matching controls and allow asset building to finish before comparing FPS; alternate runs to account for phone heating. Neither path changes LOD thresholds, source geometry, viewport resolution, software overflow fallback or the one-frame queue limit.
+
+The user reported approximately 30 FPS on a phone before this pass. No post-change device speedup is claimed. CPU regression tests compare cached resolution against exhaustive resolution across multiple batches, reversed candidate order, depth ties, shared edges, uncovered pixels and stale cache slots; both WGSL variants pass Naga parsing/emission. These tests do not replace device shader validation or visual comparison.

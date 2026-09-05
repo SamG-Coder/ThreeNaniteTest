@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { Discard, Fn, If, screenCoordinate, textureLoad, uint } from 'three/tsl';
 import { forestRasterWGSL } from './forestShaders.js';
+import { forestReferenceWGSL } from './forestReferenceShaders.js';
 
 // Uses the pinned Three 0.185.1 backend to share GPU-selected meshlet lists.
 // Geometry visibility and color are computed here; Three presents the output
@@ -11,6 +12,7 @@ export class ForestBitmaskRenderer {
     this.device=this.renderer.backend.device;this.outputMode='shaded';this.disposed=false;
     this.lastReadback=-Infinity;this.reading=false;this.busy=false;this.generation=0;
     this.metrics=null;this.buffers=[];
+    this.reference=new URLSearchParams(globalThis.location?.search??'').get('bitmaskReference')==='1';
     this.uniformBytes=new ArrayBuffer(128);
     this.uniform=this.makeBuffer(128,GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST);
     this.control=this.makeBuffer(32,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);
@@ -34,7 +36,7 @@ export class ForestBitmaskRenderer {
     if(data)this.device.queue.writeBuffer(b,0,data);return b;
   }
   async init(){
-    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:forestRasterWGSL});
+    const module=this.device.createShaderModule({label:'Forest bitmask rasterization',code:this.reference?forestReferenceWGSL:forestRasterWGSL});
     const info=await module.getCompilationInfo();
     const errors=info.messages.filter(m=>m.type==='error');
     if(errors.length)throw new Error(errors.map(e=>`Forest WGSL ${e.lineNum}: ${e.message}`).join('\n'));
@@ -101,13 +103,14 @@ export class ForestBitmaskRenderer {
   }
   render(now){
     if(!this.groups)this.createGroups();
+    const read=!this.reading&&now-this.lastReadback>=500;
     const f=new Float32Array(this.uniformBytes),u=new Uint32Array(this.uniformBytes);
     f.set(this.forest.terrain.projScreenMatrix.elements,0);
     f.set([...this.camera.position.toArray(),1],16);
     u.set([this.width,this.height,this.tilesX,this.tilesX*this.tilesY],20);
     const [a,b]=this.forest.pipelines;
     u.set([a.maxVisibleClusters,b.maxVisibleClusters,a.asset.indices.length,b.asset.indices.length],24);
-    u.set([this.entryCapacity,{shaded:0,meshlets:1,lod:2,normals:3}[this.outputMode]??0,0,0],28);
+    u.set([this.entryCapacity,{shaded:0,meshlets:1,lod:2,normals:3}[this.outputMode]??0,read?1:0,0],28);
     this.device.queue.writeBuffer(this.uniform,0,this.uniformBytes);
     const encoder=this.device.createCommandEncoder({label:'Forest bitmask frame'});
     encoder.copyBufferToBuffer(this.sharedBuffer(a.visibleCountAttribute),0,this.control,0,4);
@@ -119,13 +122,12 @@ export class ForestBitmaskRenderer {
       else pass.dispatchWorkgroups(name==='clear'?Math.ceil(Math.max(8,this.tilesX*this.tilesY)/64):a.maxVisibleClusters+b.maxVisibleClusters);
       pass.end();
     }
-    const read=!this.reading&&now-this.lastReadback>=500;
     if(read)encoder.copyBufferToBuffer(this.control,0,this.readback,0,32);
     this.device.queue.submit([encoder.finish()]);
     if(read)this.readStats(now);
     // Keep the existing lake and sky. Forest geometry has no hardware draw.
     const r=this.renderer;
-    r.setRenderTarget(a.sceneTarget);r.clear();r.render(a.scene,this.camera);
+    r.setRenderTarget(a.sceneTarget);if(!r.autoClear)r.clear();r.render(a.scene,this.camera);
     const autoClear=r.autoClear;
     try{r.autoClear=false;this.quad.render(r);}finally{r.autoClear=autoClear;}
     r.setRenderTarget(null);a.blitQuad.render(r);
@@ -140,7 +142,7 @@ export class ForestBitmaskRenderer {
     this.readback.mapAsync(GPUMapMode.READ).then(()=>{
       const counters=new Uint32Array(this.readback.getMappedRange()).slice();this.readback.unmap();
       if(!this.disposed&&generation===this.generation)this.metrics={
-        entries:Math.min(counters[2],this.entryCapacity),capacity:this.entryCapacity,
+        reference:this.reference,entries:Math.min(counters[2],this.entryCapacity),capacity:this.entryCapacity,
         overflowTiles:counters[3],covered:counters[4],batches:counters[5],width:this.width,height:this.height
       };
     }).catch(error=>{if(!this.disposed)console.warn('Forest bitmask statistics unavailable:',error);})

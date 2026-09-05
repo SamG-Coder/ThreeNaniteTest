@@ -11,6 +11,8 @@ The **Geometry** selector now offers four distinct paths:
 | Hierarchical LOD | Recursive cluster tree; GPU traversal selects parents or refines into children by projected pixel error |
 | Bitmask Raster · forest | Hierarchy-selected terrain and trees rasterized in compute using 32-triangle mask batches; simplified lighting |
 
+For a forest raster A/B comparison, open [optimised Bitmask Raster](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskReference=0) or [original Bitmask Raster](https://samg-coder.github.io/ThreeNaniteTest/?bitmaskReference=1). The optimised shader reuses sample depths, skips samples hidden by earlier batches, shades final winners once, and aggregates statistics. Geometry and resolution stay the same; target-device speedup is not yet measured.
+
 Hierarchical LOD is the default. This is a browser experiment, not Epic's Nanite implementation. Patch LOD and Hierarchical LOD include:
 
 - Patch LOD: spatial groups of up to 64 leaf meshlets in the terrain scene (16 in the mesh stress test)
