@@ -1,0 +1,141 @@
+{
+  "adapter": {
+    "vendor": "SwiftShader driver",
+    "architecture": "",
+    "device": "SwiftShader Device (Subzero)",
+    "description": "",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 6880,
+    "device_id": 49374,
+    "adapter_type": "CPU",
+    "backend_type": "Vulkan"
+  },
+  "manifest": {
+    "width": 160,
+    "height": 288,
+    "counts": {
+      "groupsVisited": 8320,
+      "groupsRejected": 7364,
+      "meshletsTested": 51272,
+      "frustumRejected": 7578,
+      "coneRejected": 704,
+      "actualTriangles": 2718723,
+      "paddedTriangleSlots": 2751360,
+      "asset0": 1124,
+      "asset1": 41866,
+      "binDispatchInvocations": 29359680,
+      "idleBinInvocations": 26608320
+    },
+    "sourceTriangles": 28172160,
+    "capacity": [
+      6713,
+      439808
+    ],
+    "geometry": "full",
+    "density": "high",
+    "camera": {
+      "position": [
+        0,
+        4.1146040622323286,
+        62
+      ],
+      "pitch": -0.05,
+      "yaw": 0,
+      "fov": 50
+    },
+    "selection": "CPU equivalent of cull, deterministic slot order"
+  },
+  "layoutAdaptation": "Terrain/tree Vertex arrays concatenated to fit 10 storage bindings; source shader arithmetic unchanged",
+  "stats": 0,
+  "dispatch": "capacity",
+  "emptyBoundsExperiment": false,
+  "runs": [
+    {
+      "variant": "original",
+      "sourceSHA256": "f66135afc80b2938ef2a59ad3dd1f3708490f4885532bdf5b5cbc98f1013ee31",
+      "timings": [
+        {
+          "wallSeconds": 5.6523736720046145,
+          "stagesMs": [
+            2.035294,
+            4051.470037,
+            1081.4181
+          ]
+        },
+        {
+          "wallSeconds": 5.057256594998762,
+          "stagesMs": [
+            0.1645,
+            4018.2294,
+            1038.082078
+          ]
+        }
+      ],
+      "depthMaxDifference": 0.0,
+      "idMismatches": 0,
+      "counters": [
+        1124,
+        41866,
+        1474026,
+        0,
+        43148,
+        46469,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": "e684cb911211e8dd184928e033327505cb6bbfee641050622a42c7da509f1a72"
+    },
+    {
+      "variant": "reject",
+      "sourceSHA256": "636c1e798b82111bdc1be22a288873896909d0582006bee36cda060674489f01",
+      "timings": [
+        {
+          "wallSeconds": 5.941511386998172,
+          "stagesMs": [
+            1.510757,
+            4560.399479,
+            1109.355399
+          ]
+        },
+        {
+          "wallSeconds": 5.1750225470023,
+          "stagesMs": [
+            0.198455,
+            4006.471872,
+            1167.699908
+          ]
+        }
+      ],
+      "depthMaxDifference": 0.0,
+      "idMismatches": 0,
+      "counters": [
+        1124,
+        41866,
+        1394655,
+        0,
+        43148,
+        44429,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": "e684cb911211e8dd184928e033327505cb6bbfee641050622a42c7da509f1a72"
+    }
+  ]
+}

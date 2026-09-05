@@ -1,5 +1,7 @@
 # Three.js WebGPU Geometry LOD
 
+See the [full emulation audit](docs/EMULATION_AUDIT.md) for CPU work counts, actual SwiftShader shader execution, reproducible harnesses, and the two largest avoidable costs found. The harness experiments do not alter the deployed renderer.
+
 A runnable GPU-driven geometry prototype for **Three.js 0.185.1** and WebGPU.
 
 **Geometry** and **Rasterizer** are independent controls.

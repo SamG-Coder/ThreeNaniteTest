@@ -1,0 +1,378 @@
+{
+  "settings": {
+    "density": "high",
+    "geometry": "full",
+    "width": 384,
+    "height": 704,
+    "pitch": -0.05,
+    "yaw": 0
+  },
+  "camera": {
+    "position": [
+      0,
+      4.1146040622323286,
+      62
+    ],
+    "pitch": -0.05,
+    "yaw": 0,
+    "fov": 50
+  },
+  "sourceTriangles": 28172160,
+  "assetBytes": 26926552,
+  "selection": {
+    "groupsVisited": 8320,
+    "groupsRejected": 7383,
+    "meshletsTested": 50249,
+    "frustumRejected": 7659,
+    "coneRejected": 692,
+    "actualTriangles": 2649588,
+    "paddedTriangleSlots": 2681472,
+    "asset0": 1097,
+    "asset1": 40801,
+    "binDispatchInvocations": 29359680,
+    "idleBinInvocations": 26678208
+  },
+  "setup": {
+    "paddingSlots": 31884,
+    "nearClipped": 151,
+    "backfaceOrDegenerate": 1286202,
+    "outsideViewport": 47878
+  },
+  "projectedPrimitives": 1315508,
+  "limitations": [
+    "CPU algorithm/work-count model, not phone GPU timing",
+    "Deterministic serial atomic insertion order; GPU ordering differs",
+    "Projected float32 values, JS arithmetic; no GPU FMA/bit-exact guarantee",
+    "Triangle projection memoized on CPU; repeated shader setup counted analytically",
+    "No hardware raster, lighting, sky/water, presentation, driver or cache emulation",
+    "Overflow aborts explicitly; no silent geometry truncation",
+    "Camera is reproducible, not recovered from screenshots"
+  ],
+  "variants": [
+    {
+      "variant": "original",
+      "candidateTiles": 1642468,
+      "edgeRejected": 0,
+      "entries": 1642468,
+      "batches": 53878,
+      "rasterSetups": 1642468,
+      "depthRejected": 0,
+      "coverageTests": 2144770,
+      "coverageHits": 500470,
+      "resolveTests": 500470,
+      "depthInterpolations": 1000940,
+      "winnerUpdates": 324737,
+      "maskAtomics": 500470,
+      "maskReadWords": 0,
+      "depthScratchReads": 0,
+      "depthScratchWrites": 0,
+      "barriers": 219736,
+      "diagnosticAtomicAdds": 307067,
+      "coveredPixels": 253189,
+      "zeroHitCandidates": 1427983,
+      "binSetups": 2681472,
+      "totalSetupCalls": 4323940,
+      "setupSourceVertexFetches": 12971820,
+      "shadeCalls": 324737,
+      "idMismatch": 0,
+      "depthMismatch": 0,
+      "checksum": "8addda9586cbbbe3d7eae3e27318c6dc52d1352f41790744d508caa808006b3a",
+      "verification": [
+        {
+          "pixel": [
+            96,
+            176
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            192,
+            352
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            288,
+            528
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            192,
+            563
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            38,
+            352
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            345,
+            352
+          ],
+          "match": true
+        }
+      ]
+    },
+    {
+      "variant": "owned",
+      "candidateTiles": 1642468,
+      "edgeRejected": 0,
+      "entries": 1642468,
+      "batches": 53878,
+      "rasterSetups": 1642468,
+      "depthRejected": 0,
+      "coverageTests": 2144770,
+      "coverageHits": 500470,
+      "resolveTests": 500470,
+      "depthInterpolations": 500470,
+      "winnerUpdates": 324737,
+      "maskAtomics": 0,
+      "maskReadWords": 105117952,
+      "depthScratchReads": 0,
+      "depthScratchWrites": 0,
+      "barriers": 165858,
+      "diagnosticAtomicAdds": 307067,
+      "coveredPixels": 253189,
+      "zeroHitCandidates": 1427983,
+      "binSetups": 2681472,
+      "totalSetupCalls": 4323940,
+      "setupSourceVertexFetches": 12971820,
+      "shadeCalls": 324737,
+      "idMismatch": 0,
+      "depthMismatch": 0,
+      "checksum": "8addda9586cbbbe3d7eae3e27318c6dc52d1352f41790744d508caa808006b3a",
+      "verification": [
+        {
+          "pixel": [
+            96,
+            176
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            192,
+            352
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            288,
+            528
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            192,
+            563
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            38,
+            352
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            345,
+            352
+          ],
+          "match": true
+        }
+      ]
+    },
+    {
+      "variant": "cached",
+      "candidateTiles": 1642468,
+      "edgeRejected": 0,
+      "entries": 1642468,
+      "batches": 53878,
+      "rasterSetups": 1642468,
+      "depthRejected": 0,
+      "coverageTests": 2144770,
+      "coverageHits": 500470,
+      "resolveTests": 362021,
+      "depthInterpolations": 500470,
+      "winnerUpdates": 324737,
+      "maskAtomics": 362021,
+      "maskReadWords": 0,
+      "depthScratchReads": 862491,
+      "depthScratchWrites": 3810213,
+      "barriers": 223960,
+      "diagnosticAtomicAdds": 8448,
+      "coveredPixels": 253189,
+      "zeroHitCandidates": 1513439,
+      "binSetups": 2681472,
+      "totalSetupCalls": 4323940,
+      "setupSourceVertexFetches": 12971820,
+      "shadeCalls": 253189,
+      "idMismatch": 0,
+      "depthMismatch": 0,
+      "checksum": "8addda9586cbbbe3d7eae3e27318c6dc52d1352f41790744d508caa808006b3a",
+      "verification": [
+        {
+          "pixel": [
+            96,
+            176
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            192,
+            352
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            288,
+            528
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            192,
+            563
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            38,
+            352
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            345,
+            352
+          ],
+          "match": true
+        }
+      ]
+    },
+    {
+      "variant": "reject",
+      "candidateTiles": 1642468,
+      "edgeRejected": 119673,
+      "entries": 1522795,
+      "batches": 52389,
+      "rasterSetups": 1522795,
+      "depthRejected": 522301,
+      "coverageTests": 1438966,
+      "coverageHits": 382824,
+      "resolveTests": 382824,
+      "depthInterpolations": 382824,
+      "winnerUpdates": 276166,
+      "maskAtomics": 0,
+      "maskReadWords": 97458880,
+      "depthScratchReads": 3352896,
+      "depthScratchWrites": 3352896,
+      "barriers": 161391,
+      "diagnosticAtomicAdds": 13210277,
+      "coveredPixels": 253189,
+      "zeroHitCandidates": 857232,
+      "binSetups": 2681472,
+      "totalSetupCalls": 4204267,
+      "setupSourceVertexFetches": 12612801,
+      "shadeCalls": 276166,
+      "idMismatch": 0,
+      "depthMismatch": 0,
+      "checksum": "8addda9586cbbbe3d7eae3e27318c6dc52d1352f41790744d508caa808006b3a",
+      "verification": [
+        {
+          "pixel": [
+            96,
+            176
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            192,
+            352
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            288,
+            528
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            192,
+            563
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            38,
+            352
+          ],
+          "match": true
+        },
+        {
+          "pixel": [
+            345,
+            352
+          ],
+          "match": true
+        }
+      ]
+    }
+  ],
+  "sources": {
+    "src/ForestRenderer.js": "e1bc07966f081bcc6a2535530cce7cc33e275bbc4df63f0cb76bc766ec1d1778",
+    "src/NaniteLiteRenderer.js": "13c1dc9098d4933959a257eeebedde543ca9bbdcf5d5559d45e9459576a63196",
+    "src/bitmask/ForestBitmaskRenderer.js": "06d2dfcca14fbf9101d1ac39bf9f4db59e62e172ef3f2d9e277c909f25097998",
+    "src/bitmask/FrameExperiment.js": "8bf08f72974dd42ea0f366e36eb01e6eab7f4d3ec8966d5f5752f8f4fda17bc9",
+    "src/bitmask/fixtures.js": "861278b08d5792db7954187dbac9de6aaa232f84023825c89706d0cd3928c252",
+    "src/bitmask/forestOwnedMaskShaders.js": "1ec2bc89d4ae85a77628f541c609f6b8a07b89a9532f6159a729265b45d825a8",
+    "src/bitmask/forestReferenceShaders.js": "21d4459fc9dd00f43c20100b65f815daba868027220514399be5589cad8c97a2",
+    "src/bitmask/forestRejectShaders.js": "f0e4e812f9bb58f5f086630c5b751046caef725422c7b114b36ec0815c690a59",
+    "src/bitmask/forestShaders.js": "c481f5971ed049d45dcfbdd09dc9604f78bb9d2adc42d8342f7dcaf5dc5daf16",
+    "src/bitmask/reference.js": "3ce070e5664fa392136546e2d56527a36dd6d2de7c911f4e89505edde1f3e761",
+    "src/bitmask/shaders.js": "50972fec6adf0f6f3d4bcead2fed35fbe91f7bba661895ef9adf0410bd71923d",
+    "src/bitmask/test.css": "f6b6194f48dc6325e09150f04bc892636dd6f19ec65dda079acb53f0bf346237",
+    "src/bitmask/test.js": "5ee37b1a6dbc2f6fe341b0a77a4cc83badbe949d22bb0e0b7f7c7dc5234d7e85",
+    "src/bitmask/tileReference.js": "3b1c56d5affec95a58da2822aeb16633beb468e9edc95afdb0d771c16bf04a3d",
+    "src/bitmask/variant.js": "3b860db39ccebf7faf13fee00cb0d2656213e3fc92583f0cb4a4b6fe497792ee",
+    "src/buildHierarchyAsset.js": "55eb6baf69b940f031b9b4503c9c47b4bae747bbe1871336cd9ce2d062fbd35a",
+    "src/buildNaniteLiteAsset.js": "b9556d6942e4585d72ab32714e3658affc0d9dda8bd1f3d8209053f274118c8b",
+    "src/config.js": "812c39109fdfb6064e604f3227466fc478986edff5ed1bf75a67b80f5717e907",
+    "src/forestScene.js": "55929b1e211b3467a78382470ed64dcd3f6622741d1740731702242af3172cef",
+    "src/frameMeter.js": "d4992ba04503a53aed0f7a991365efd1c600eeac90c50c9e529cef0c413f519b",
+    "src/gameControls.js": "fb310942647e2f1dbb57ecf06eb588eccbdc9b6796bd542fbc0b896a23cba809",
+    "src/gameScene.js": "061adea132e1581a30d09f6c459fc4008eac5d7001bee891391f73f4a39ac389",
+    "src/main.js": "0892570c4e91632248818715bf3e30f4f85447ce9f427653662375998c666f19",
+    "src/partitionMeshlets.js": "02cdee81d7fb9af426deb16ccacf4261e29868dd3f48fe0d98136b8224847ccf",
+    "src/styles.css": "03ffae690080e8f2ef2bc5a4b3c8d1a8e4cd0a85d88f158a62750482a9ec75b4",
+    "src/ui.js": "9fb4ffed99885f341745b913babbd143a008fafaf0b91380d5b9712cd934643a",
+    "scripts/emulate-forest.mjs": "378a1bbe65c9b7c0e80fa1f591b804a180b6018cc7cfcb4415b00cfbf34e4518",
+    "scripts/emulation/export-gpu.mjs": "2c69b8178a6b7c42ee5cf59e660cb34d2865e34fa885297a0cf321f9b154d7ef",
+    "scripts/emulation/forest.mjs": "ea5243bd588f6652a89679153a803ab160e4f31d2ca6f7b3df1a7da6c0ebb41c",
+    "scripts/emulation/raster.mjs": "bc6475b15ab1d07f3ba208d8b2e76cc6d4797693b4c8ff1fd32d20029e38add2",
+    "scripts/validate.mjs": "4dc67695e93e9ad63e93af5361322dbc3ac96fd2aa7d9dbe30055df6b82cb3f1"
+  }
+}

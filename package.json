@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "validate": "node scripts/validate.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "emulate": "node scripts/emulate-forest.mjs"
   },
   "dependencies": {
     "three": "0.185.1"
