@@ -9,7 +9,7 @@ for(const [i,p]of ['a','b'].entries())access+=`
 @group(0) @binding(${i*5+4}) var<storage,read> ${p}m:array<mat4x4<f32>>;
 `;
 export const rayLightingWGSL=access+`
-struct Params{inverse:mat4x4<f32>,matrix:mat4x4<f32>,camera:vec4<f32>,size:vec4<u32>,flags:vec4<u32>,water:vec4<f32>,extent:vec4<f32>};
+struct Params{inverse:mat4x4<f32>,matrix:mat4x4<f32>,camera:vec4<f32>,size:vec4<u32>,flags:vec4<u32>,water:vec4<f32>,extent:vec4<f32>,assets:vec4<u32>};
 @group(0) @binding(10) var<storage,read> tlas:array<vec4<f32>>;
 @group(0) @binding(11) var<uniform> p:Params;
 @group(0) @binding(12) var mainDepth:texture_depth_2d;
@@ -18,6 +18,7 @@ struct Params{inverse:mat4x4<f32>,matrix:mat4x4<f32>,camera:vec4<f32>,size:vec4<
 @group(0) @binding(15) var<storage,read_write> counters:array<atomic<u32>>;
 @group(0) @binding(16) var materials:texture_2d_array<f32>;
 @group(0) @binding(17) var materialSampler:sampler;
+@group(0) @binding(18) var receiverOut:texture_storage_2d<r32float,write>;
 fn word(a:u32,o:u32)->u32{if(a==0u){return av[o];}return bv[o];}
 fn scalar(a:u32,o:u32)->f32{return bitcast<f32>(word(a,o));}
 fn xyz(a:u32,o:u32)->vec3<f32>{return vec3<f32>(scalar(a,o),scalar(a,o+1u),scalar(a,o+2u));}
@@ -61,6 +62,8 @@ fn trace(origin:vec3<f32>,direction:vec3<f32>,shadow:bool,seed:u32)->Hit{
    }
    for(var cluster=u32(geometry.y);cluster<u32(geometry.y+geometry.z);cluster++){
     if(work>2048u){atomicAdd(&counters[2],1u);hit.complete=0u;return hit;}
+    // Reject whole clusters before decoding any page vertices or occupancy.
+    if(geometry.z>1.0&&!intersects(ro,rd,sphere(asset,p.assets[asset]+cluster),hit.t)){continue;}
     let page=table(asset,cluster*4u);let kind=table(asset,cluster*4u+3u);
     if(kind==0u){
      for(var corner=0u;corner<192u;corner+=3u){
@@ -110,14 +113,27 @@ fn trace(origin:vec3<f32>,direction:vec3<f32>,shadow:bool,seed:u32)->Hit{
  var shadow=1.0;var reflection=vec4<f32>(0);let seed=(g.x*1597334677u)^(g.y*3812015801u);let sun=normalize(vec3<f32>(.5,1,.35));
  if(p.flags.x!=0u&&receiver){atomicAdd(&counters[0],1u);let hit=trace(point+sun*.08,sun,true,seed);if(hit.complete==1u&&hit.t<200.0){shadow=0.0;}}
  if(p.flags.y!=0u&&water){atomicAdd(&counters[1],1u);let ray=reflect(direction,vec3<f32>(0,1,0));let hit=trace(point+ray*.1,ray,false,seed);if(hit.complete==1u&&hit.t<200.0){var normal=hit.normal;if(dot(normal,ray)>0.0){normal=-normal;}let lit=hit.color*(.48+.3*clamp(normal.y*.5+.5,0.0,1.0)+max(dot(normal,sun),0.0)*.85);let fog=1.0-exp(-.00000324*hit.t*hit.t);reflection=vec4<f32>(mix(lit,vec3<f32>(.4678,.6939,.7379),fog),1);}}
+ let receiverClip=p.matrix*vec4<f32>(point,1);textureStore(receiverOut,vec2<i32>(g.xy),vec4<f32>(select(1.0,receiverClip.z/receiverClip.w,receiver)));
  textureStore(shadowOut,vec2<i32>(g.xy),vec4<f32>(shadow));textureStore(reflectionOut,vec2<i32>(g.xy),reflection);
 }
 `;
 export const shadowSamplingWGSL=`
 @group(0) @binding(30) var rayShadows:texture_2d<f32>;
 @group(0) @binding(31) var<uniform> rayFlags:vec4<u32>;
+@group(0) @binding(32) var rayReceiverDepth:texture_2d<f32>;
 fn rayShadow(pixel:vec2<f32>)->f32{
- if(rayFlags.x==0u){return 1.0;}let size=vec2<i32>(textureDimensions(rayShadows));let uv=pixel/vec2<f32>(params.size.xy)*vec2<f32>(size)-.5;let base=vec2<i32>(floor(uv));let f=fract(uv);
- let a=textureLoad(rayShadows,clamp(base,vec2<i32>(0),size-1),0).r;let b=textureLoad(rayShadows,clamp(base+vec2<i32>(1,0),vec2<i32>(0),size-1),0).r;let c=textureLoad(rayShadows,clamp(base+vec2<i32>(0,1),vec2<i32>(0),size-1),0).r;let d=textureLoad(rayShadows,clamp(base+vec2<i32>(1,1),vec2<i32>(0),size-1),0).r;return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
+ if(rayFlags.x==0u){return 1.0;}
+ let size=vec2<i32>(textureDimensions(rayShadows));let uv=pixel/vec2<f32>(params.size.xy)*vec2<f32>(size)-.5;let base=vec2<i32>(floor(uv));let f=fract(uv);
+ let receiver=textureLoad(depth,clamp(vec2<i32>(pixel),vec2<i32>(0),vec2<i32>(params.size.xy)-1),0);
+ var sum=0.0;var weight=0.0;
+ for(var y=0;y<2;y++){for(var x=0;x<2;x++){
+  let q=clamp(base+vec2<i32>(x,y),vec2<i32>(0),size-1);let sampleDepth=textureLoad(rayReceiverDepth,q,0).r;
+  // Relative perspective-depth difference rejects samples across silhouettes.
+  let difference=abs(sampleDepth-receiver)/max(1.0-receiver,.000001);
+  let spatial=select(1.0-f.x,f.x,x==1)*select(1.0-f.y,f.y,y==1);
+  let w=spatial*max(0.0,1.0-difference*32.0);
+  sum+=textureLoad(rayShadows,q,0).r*w;weight+=w;
+ }}
+ return select(1.0,sum/max(weight,.00001),weight>.001);
 }
 `;

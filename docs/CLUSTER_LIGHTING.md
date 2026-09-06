@@ -8,7 +8,7 @@ Shadows attenuate direct sunlight while retaining ambient illumination. Water re
 
 ## Cost and limitations
 
-- Effects use one-quarter width and height (one-sixteenth pixel count), sharing one compute dispatch. Unchanged camera/geometry results are reused. Both disabled means no lighting-ray dispatch, although small textures, hierarchy and pipeline resources remain allocated.
+- Effects use at most one-quarter width and height, sharing one compute dispatch. Lighting quality caps the sample grid at 8,192 pixels (Fast), 16,384 (Balanced, default), or 65,536 (High), preserving aspect ratio. Main scene resolution and geometry detail are unchanged. Unchanged camera/geometry results are reused. Both disabled means no lighting-ray dispatch, although small textures, hierarchy and pipeline resources remain allocated.
 - Rays have a 200-unit range and bounded hierarchy/primitive work. Exhausted queries fall back to unshadowed sunlight or sky reflection; the HUD reports budget fallbacks.
 - Secondary rays do not request additional geometry pages. Off-screen objects can therefore appear at coarse resident detail. Geometry loading, camera movement and output changes invalidate cached results.
 - Sparse foliage coverage is stochastic. Coarse cells require a self-intersection bias, which can lose contact shadows. Quarter-resolution sampling can blur thin branches and leak across silhouettes.
@@ -17,3 +17,11 @@ Shadows attenuate direct sunlight while retaining ambient illumination. Water re
 ## Validation
 
 `npm test`, `npm run validate`, and `npm run build` cover the normal project gates. `node scripts/emulation/run-cluster-renderer.mjs --lighting` additionally creates the actual native WebGPU pipelines, checks each toggle combination, asserts both blocked and unblocked shadow samples and valid water reflection hits, and confirms zero lighting rays with both options disabled. This emulated GPU check does not predict mobile FPS.
+
+## Lighting performance and reconstruction update
+
+Multi-cluster groups now reject individual cluster bounds before decoding geometry. Single-cluster groups reuse their existing node test. Surface shadows use depth-aware interpolation to reject samples from unrelated silhouettes; water shadows use four-tap interpolation. Reflections composite premultiplied hit coverage correctly, removing the extra dark fringe, and fade towards sky at screen borders.
+
+The native fixture supports `--lighting --benchmark` for a warmed, 20-sample lighting-pass measurement (includes queue submission/wait). On this software Vulkan run the retained pass measured 74.8 ms median versus 72.5 ms before, with broad timing variation: this does not demonstrate a traversal speedup. A deferred-material experiment measured 96.4 ms and was removed. The predictable workload reduction is the pixel budget: a 779×1536 render changes from 74,880 lighting pixels to roughly 16,000 in Balanced. This is not an equivalent FPS promise; tracing costs and main-scene rendering still vary.
+
+Tests also exercise live quality changes and resizing with both effects active. No extra geometry cooking or secondary-ray streaming requests were added.

@@ -10,8 +10,8 @@ import {clusterSelectionWGSL} from './selectionShaders.js';
 export class ClusterForestRenderer extends ForestStreamingRenderer{
  resize(){super.resize();this.visibilitySignature=null;this.rayLighting?.resize();}
  get geometryWGSL(){return litBrickWGSL;}
- get shadeBindings(){return [30,31];}
- extendShadeResources(resources){resources[30]=this.renderer.backend.get(this.rayLighting.shadow).texture.createView();resources[31]={buffer:this.rayLighting.flags};}
+ get shadeBindings(){return [30,31,32];}
+ extendShadeResources(resources){resources[30]=this.renderer.backend.get(this.rayLighting.shadow).texture.createView();resources[31]={buffer:this.rayLighting.flags};resources[32]=this.renderer.backend.get(this.rayLighting.receiverDepth).texture.createView();}
  dispose(){this.rayLighting?.dispose();super.dispose();}
  createAssets(){
   this.residencyRevision=0;this.selectionRuns=0;this.visibilityRuns=0;this.pagers=[];this.raw=new Map();this.requestPending=false;this.lastDemand=-Infinity;this.totalUploadBytes=0;this.frameUploadBytes=0;
@@ -112,7 +112,7 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
   this.reading=true;this.lastReadback=now;const generation=this.generation;
   this.readback.mapAsync(GPUMapMode.READ).then(()=>{const c=new Uint32Array(this.readback.getMappedRange()).slice();this.readback.unmap();if(this.disposed||generation!==this.generation)return;
    const sum=fn=>this.forest.pipelines.reduce((s,p)=>s+fn(p),0);
-   this.metrics={visibility:true,reused:this.visibilityReused,lighting:{shadows:this.rayLighting.shadows,reflections:this.rayLighting.reflections,rays:c[10]+c[11],limited:c[12]},variant:'triangle / sparse-brick hierarchy',seed:c[2],recovery:c[3],culled:c[5],covered:c[4],triangleClusters:c[6],brickClusters:c[7],submittedTriangles:c[6]*64,streaming:{bytes:this.pagers.reduce((s,p)=>s+p.bytes,0),pages:this.pagers.reduce((s,p)=>s+p.pager.mapping.size,0)},overflowTiles:0};
+   this.metrics={visibility:true,reused:this.visibilityReused,lighting:{quality:this.rayLighting.quality,width:this.rayLighting.width,height:this.rayLighting.height,shadows:this.rayLighting.shadows,reflections:this.rayLighting.reflections,rays:c[10]+c[11],limited:c[12]},variant:'triangle / sparse-brick hierarchy',seed:c[2],recovery:c[3],culled:c[5],covered:c[4],triangleClusters:c[6],brickClusters:c[7],submittedTriangles:c[6]*64,streaming:{bytes:this.pagers.reduce((s,p)=>s+p.bytes,0),pages:this.pagers.reduce((s,p)=>s+p.pager.mapping.size,0)},overflowTiles:0};
    this.forest.onStats({naniteEnabled:true,sourceTriangles:sum(p=>p.asset.sourceTriangleCount),sourceSceneTriangles:sum(p=>p.asset.sourceTriangleCount*p.instanceCount),submittedTriangles:c[6]*64,visibleMeshlets:c[2]+c[3],capacity:sum(p=>p.maxVisibleClusters),instances:sum(p=>p.instanceCount),groups:sum(p=>p.asset.groupCount),assetBytes:sum(p=>p.asset.bytes),lockedVertices:0,overflowed:Boolean(c[8]||c[9]),lodCounts:[c[6],c[7],0,0,0,0],bitmask:this.metrics});
   }).catch(e=>{if(!this.disposed)console.warn(e);}).finally(()=>{this.reading=false;if(this.disposed)this.readback.destroy();});
  }

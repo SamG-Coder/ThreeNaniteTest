@@ -50,6 +50,19 @@ if(lightingTest){
   if(shadows){const {data,row}=await readLighting(lighting.shadow,4),view=new DataView(data.buffer);let blocked=0,lit=0;for(let y=0;y<lighting.height;y++)for(let x=0;x<lighting.width;x++){const value=view.getFloat32(y*row+x*4,true);if(value===0)blocked++;if(value===1)lit++;}assert.ok(blocked>0&&lit>0,'shadow rays must distinguish blocked and unblocked receivers');}
   if(reflections){const {data,row}=await readLighting(lighting.reflection,8),view=new DataView(data.buffer);let hits=0;for(let y=0;y<lighting.height;y++)for(let x=0;x<lighting.width;x++)if(view.getUint16(y*row+x*8+6,true)===0x3c00)hits++;assert.ok(hits>0,'water rays must hit scene geometry');}
   console.log(JSON.stringify({shadows,reflections,stats:stats.bitmask.lighting}));
+  if(process.argv.includes('--benchmark')&&shadows&&reflections){
+   const samples=[];
+   for(let i=0;i<28;i++){const start=performance.now(),encoder=device.createCommandEncoder();lighting.encode(encoder);device.queue.submit([encoder.finish()]);await device.queue.onSubmittedWorkDone();if(i>=8)samples.push(performance.now()-start);}
+   samples.sort((a,b)=>a-b);console.log(JSON.stringify({lightingBenchmark:{medianMs:samples[10],p90Ms:samples[18],samples:20,width:lighting.width,height:lighting.height}}));
+  }
  }
+ lighting.set('shadows',true);lighting.set('reflections',true);
+ for(const quality of ['fast','high','balanced']){
+  lighting.setQuality(quality);forest.render(clock+=1000);await device.queue.onSubmittedWorkDone();
+ }
+ renderer.setSize(256,160,false);forest.resize();camera.aspect=256/160;camera.updateProjectionMatrix();camera.updateMatrixWorld();
+ forest.render(clock+=1000);await device.queue.onSubmittedWorkDone();
+ assert.equal(lighting.width,64);assert.equal(lighting.height,40);
+ console.log(JSON.stringify({lightingQualitySwitch:true,lightingResize:true}));
 }
 fs.writeFileSync('/tmp/cluster-renderer-report.json',JSON.stringify({width,height,errors,report},null,2));forest.dispose();renderer.dispose();device.destroy();if(errors.length)throw Error(`${errors.length} GPU validation errors`);
