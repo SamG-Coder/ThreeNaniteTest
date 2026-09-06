@@ -1,3 +1,4 @@
+import {TEXTURED_PAGE_WORDS,packTexturedPage,texturedPagedWGSL} from './texturedPages.js';
 import { depthOrderWGSL } from './depthOrder.js';
 import { ForestVisibilityRenderer } from '../visibility/ForestVisibilityRenderer.js';
 import { PAGE_WORDS, packPage, pageLayout, PageCache } from './pages.js';
@@ -24,26 +25,27 @@ export class ForestStreamingRenderer extends ForestVisibilityRenderer {
     const pass=encoder.beginComputePass({label:'Local front-to-back cluster order'});
     pass.setPipeline(this.depthPipelines[phase]);pass.setBindGroup(0,this.depthGroups[phase]);pass.dispatchWorkgroupsIndirect(this.argumentsBuffer,32);pass.end();
   }
-  get geometryWGSL(){return this.forest.pipelines.some(p=>p.asset.coverage)?pagedVisibilityWGSL:pagedOpaqueVisibilityWGSL;}
+  get geometryWGSL(){if(this.forest.landscapeTexture)return texturedPagedWGSL;return this.forest.pipelines.some(p=>p.asset.coverage)?pagedVisibilityWGSL:pagedOpaqueVisibilityWGSL;}
   createAssets(){
     this.pagers=[];this.requestPending=false;this.lastDemand=-Infinity;
     this.frameUploadBytes=0;this.totalUploadBytes=0;
+    const words=this.forest.landscapeTexture?TEXTURED_PAGE_WORDS:PAGE_WORDS;
     return this.forest.pipelines.map(p=>{
       const layout=pageLayout(p.asset);
       // A bounded GPU cache, with a guaranteed complete fallback and room for
       // at least one replacement unit. Procedural source remains in CPU memory.
       const minimum=layout.pinned.length+Math.max(0,...layout.units.map(u=>u.pages.length));
-      const slots=Math.min(p.asset.totalClusters,Math.max(minimum,Math.floor(8*1024*1024/(PAGE_WORDS*4))));
-      if(slots*PAGE_WORDS*4>this.device.limits.maxStorageBufferBindingSize)throw new Error('Pinned geometry exceeds the device page-cache limit');
-      const vertices=this.makeBuffer(slots*PAGE_WORDS*4,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST);
+      const slots=Math.min(p.asset.totalClusters,Math.max(minimum,Math.floor(8*1024*1024/(words*4))));
+      if(slots*words*4>this.device.limits.maxStorageBufferBindingSize)throw new Error('Pinned geometry exceeds the device page-cache limit');
+      const vertices=this.makeBuffer(slots*words*4,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST);
       const table=new Uint32Array(p.asset.totalClusters*4);
       const indices=this.makeBuffer(table.byteLength,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST);
       let dirty=true;
       const pager=new PageCache(p.asset,slots,(cluster,slot)=>{
-        this.device.queue.writeBuffer(vertices,slot*PAGE_WORDS*4,packPage(p.asset,p.sourceColors,cluster));
-        table.set([slot*PAGE_WORDS,0,p.asset.clusterLod[cluster],0],cluster*4);
+        this.device.queue.writeBuffer(vertices,slot*words*4,this.forest.landscapeTexture?packTexturedPage(p.asset,p.sourceColors,p.sourceSurface,cluster):packPage(p.asset,p.sourceColors,cluster));
+        table.set([slot*words,0,p.asset.clusterLod[cluster],0],cluster*4);
         this.device.queue.writeBuffer(indices,cluster*16,table.subarray(cluster*4,cluster*4+4));
-      },()=>{dirty=true;});
+      },()=>{dirty=true;},words*4);
       const flush=()=>{if(!dirty)return;p.groupLodAttribute.array.set(pager.metadata());p.groupLodAttribute.needsUpdate=true;dirty=false;};
       const demand=this.makeBuffer(p.asset.groupCount*4,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
       flush();this.pagers.push({pager,p,flush,demand,bytes:vertices.size+indices.size});
@@ -58,7 +60,7 @@ export class ForestStreamingRenderer extends ForestVisibilityRenderer {
     for(const {pager,flush} of this.pagers){const used=pager.tick(budget);budget-=used;this.frameUploadBytes+=used;flush();}
     this.totalUploadBytes+=this.frameUploadBytes;
     const accepted=super.prepare(now);
-    this.wantDemand=accepted&&!this.requestPending&&now-this.lastDemand>=150;
+    this.wantDemand=accepted&&!this.requestPending&&now-this.lastDemand>=50;
     return accepted;
   }
   encodeVisibility(encoder,a,b){

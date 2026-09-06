@@ -248,7 +248,7 @@ export class DemoUI {
       const row = document.createElement('div');
       row.className = 'lod-row';
       row.innerHTML = `
-        <span>${this.pipeline?.asset.hierarchy ? 'Tier' : 'LOD'} ${index}${this.pipeline?.asset.hierarchy && index === 5 ? '+' : ''}</span>
+        <span>${this.pipeline?.asset.brickHierarchy ? ['Triangles','Bricks'][index] : `${this.pipeline?.asset.hierarchy ? 'Tier' : 'LOD'} ${index}${this.pipeline?.asset.hierarchy && index === 5 ? '+' : ''}`}</span>
         <div class="lod-track"><div class="lod-fill" data-lod-fill="${index}"></div></div>
         <span data-lod-count="${index}">0</span>
       `;
@@ -266,8 +266,9 @@ export class DemoUI {
     if(stats.bitmask&&!stats.bitmask.visibility)this.elements.geometryReadout.textContent+=` · ${stats.bitmask.variant} · ${compactFormatter.format(stats.bitmask.batches)} mask batches · ${stats.bitmask.overflowTiles} scan tiles`;
     if(stats.bitmask?.visibility){const v=stats.bitmask;this.elements.geometryReadout.textContent+=` · ${compactFormatter.format(v.seed)} seed / ${compactFormatter.format(v.recovery)} recovery clusters · ${compactFormatter.format(v.culled)} HZB rejected · atomic coverage`; if(v.streaming)this.elements.geometryReadout.textContent+=` · ${(v.streaming.bytes/1048576).toFixed(1)} MiB page cache · ${v.streaming.pages} resident pages`; }
     if(stats.bitmask?.work){const w=stats.bitmask.work;this.elements.geometryReadout.textContent+=` · candidate tiles ${compactFormatter.format(w.candidates)} · edge rejected ${compactFormatter.format(w.edgeRejected)} · depth rejected ${compactFormatter.format(w.depthRejected)}/${compactFormatter.format(w.rasterCandidates)} · coverage tests ${compactFormatter.format(w.samples)} · depth tests ${compactFormatter.format(w.resolves)} · winner updates ${compactFormatter.format(w.wins)}`;}
+    if(stats.bitmask?.brickClusters!==undefined){this.elements.geometryReadout.textContent=`${submitted} triangle slots + ${compactFormatter.format(stats.bitmask.brickClusters)} brick clusters · ${source} source triangles · ${compactFormatter.format(stats.bitmask.culled)} HZB rejected · atomic coverage`;this.elements.geometryReadout.title='Brick clusters are separately ray-rasterized; triangle reductions do not count their cost as free.';}
     this.elements.geometryReadout.classList.toggle('capacity-error', Boolean(stats.overflowed));
-    this.elements.geometryReadout.title = 'Meshlet submission counts include padded meshlet triangles. Fewer submitted triangles does not guarantee higher FPS.';
+    if(stats.bitmask?.brickClusters===undefined)this.elements.geometryReadout.title = 'Meshlet submission counts include padded meshlet triangles. Fewer submitted triangles does not guarantee higher FPS.';
     this.elements.sourceTriangles.textContent = numberFormatter.format(
       stats.sourceTriangles
     );
@@ -309,6 +310,6 @@ export class DemoUI {
       if (label) label.textContent = numberFormatter.format(count);
     });
 
-    this.elements.sourceTriangles.title = `GPU asset buffers: ${formatBytes(stats.assetBytes)}`;
+    this.elements.sourceTriangles.title = `${this.pipeline?.asset.brickHierarchy ? 'Uncompressed asset' : 'GPU asset buffers'}: ${formatBytes(stats.assetBytes)}`;
   }
 }

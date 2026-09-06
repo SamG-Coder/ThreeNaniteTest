@@ -47,14 +47,15 @@ export function pageLayout(asset) {
       units.push({id:node,pages:Array.from({length:5},(_,level)=>clusters(node,level)).flat(),children:[],parent:-1});
     }
   }
-  const pinnedUnits=asset.voxelRoot?[0]:[];
-  if(asset.voxelRoot){pinned.push(...units[0].pages);units[0].pages=[];}
+  const pinnedUnits=(asset.voxelRoot||asset.pinRootChildren)?[0]:[];
+  if(asset.voxelRoot||asset.pinRootChildren){pinned.push(...units[0].pages);units[0].pages=[];}
   return {pinned,units,pinnedUnits};
 }
 // Residency is published per complete replacement group. An incomplete upload
 // can never become selectable. Hierarchy parents remain resident during descent.
 export class PageCache {
-  constructor(asset, slots, upload, publish) {
+  constructor(asset, slots, upload, publish, pageBytes=PAGE_WORDS*4) {
+    this.pageBytes=pageBytes;
     this.asset=asset;this.layout=pageLayout(asset);this.upload=upload;this.publish=publish;
     this.capacity=Math.max(slots,this.layout.pinned.length);
     this.free=Array.from({length:this.capacity},(_,i)=>this.capacity-1-i);
@@ -63,7 +64,7 @@ export class PageCache {
     for(const page of this.layout.pinned)this.load(page);
     this.publish(this.resident);
   }
-  load(page) { const slot=this.free.pop();if(slot===undefined)throw new Error('Page cache exhausted');this.upload(page,slot);this.mapping.set(page,slot);this.uploadedBytes+=PAGE_WORDS*4; }
+  load(page) { const slot=this.free.pop();if(slot===undefined)throw new Error('Page cache exhausted');this.upload(page,slot);this.mapping.set(page,slot);this.uploadedBytes+=this.pageBytes; }
   request(priorities) {
     this.clock++;this.requested.clear();
     priorities.forEach((priority,id)=>{if(priority){this.requested.set(id,priority);this.lastUsed.set(id,this.clock);}});
@@ -80,7 +81,7 @@ export class PageCache {
     return this.free.length>=count;
   }
   tick(budgetBytes) {
-    const before=this.uploadedBytes;let remaining=Math.floor(budgetBytes/(PAGE_WORDS*4));
+    const before=this.uploadedBytes;let remaining=Math.floor(budgetBytes/this.pageBytes);
     while(remaining>0){
       if(!this.pending){
         const next=[...this.requested].sort((a,b)=>b[1]-a[1]).map(([id])=>this.layout.units[id])

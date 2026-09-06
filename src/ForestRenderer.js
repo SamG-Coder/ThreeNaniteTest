@@ -1,3 +1,4 @@
+import {ClusterForestRenderer} from './cluster/ClusterForestRenderer.js';
 import {createLandscapeTexture,createLandscapeMaterial} from './landscapeMaterials.js';
 import { createLandscapeWater, createLandscapeSky } from './landscapeWater.js';
 import { ForestStreamingRenderer } from './streaming/ForestStreamingRenderer.js';
@@ -26,20 +27,20 @@ export class ForestRenderer {
         lodCounts:terrainAsset.lods.map((_,i)=>values.reduce((total,s)=>total+(s.lodCounts[i]??0),0))});
     };
     const fullCapacity=(asset,instances)=>{
-      const count=asset.lods[0].clusterCount*instances;
+      const count=(asset.maxCutClusters??asset.lods[0].clusterCount)*instances;
       if(count*8>renderer.backend.device.limits.maxStorageBufferBindingSize)throw new Error('Full-detail visible meshlets exceed this device buffer limit. Choose a lower forest density.');
       return count;
     };
     this.terrain = new NaniteLiteRenderer(renderer,camera,terrainAsset,{sourceGeometry:world.geometry,
-      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,streaming:options.bitmaskVariant==='streaming',maxVisibleClusters:options.fullGeometry?fullCapacity(terrainAsset,1):8192,onStats:receive('terrain')});
+      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,streaming:['streaming','bricks'].includes(options.bitmaskVariant),maxVisibleClusters:(options.fullGeometry||options.bitmaskVariant==='bricks')?fullCapacity(terrainAsset,1):8192,onStats:receive('terrain')});
     this.trees = new NaniteLiteRenderer(renderer,camera,treeAsset,{sourceGeometry:world.treeGeometry,
-      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,streaming:options.bitmaskVariant==='streaming',instanceData:world.treeInstances,maxVisibleClusters:options.fullGeometry?fullCapacity(treeAsset,world.treeInstances.length/4):32768,onStats:receive('trees')});
+      gameScene:true,gridSize:1,fullGeometry:options.fullGeometry,softwareOnly:options.bitmask,streaming:['streaming','bricks'].includes(options.bitmaskVariant),instanceData:world.treeInstances,maxVisibleClusters:(options.fullGeometry||options.bitmaskVariant==='bricks')?fullCapacity(treeAsset,world.treeInstances.length/4):32768,onStats:receive('trees')});
     this.pipelines=[this.terrain,this.trees];
-    if(world.landscape && options.bitmaskVariant!=='streaming'){
+    if((world.landscape||options.bitmaskVariant==='bricks') && !treeAsset.voxelRoot){
       this.landscapeTexture=createLandscapeTexture();
       this.pipelines.forEach((p,i)=>{
         const surface=(i?world.treeGeometry:world.geometry).getAttribute('surface');
-        p.sourceSurface=surface;
+        p.sourceSurface=p.asset.sourceSurface??surface;
         p.baselineMesh.material.dispose();p.baselineMesh.material=createLandscapeMaterial(this.landscapeTexture);
       });
     }
@@ -62,7 +63,7 @@ export class ForestRenderer {
     // A small physical roughness stops the lake becoming a mirror without IBL.
     waterMaterial.roughnessNode=float(.23);
     }
-    if(options.bitmask)this.bitmask=options.bitmaskVariant==='streaming'?new ForestStreamingRenderer(this):options.bitmaskVariant==='visibility'?new ForestVisibilityRenderer(this):new ForestBitmaskRenderer(this,options.bitmaskVariant);
+    if(options.bitmask)this.bitmask=options.bitmaskVariant==='bricks'?new ClusterForestRenderer(this):options.bitmaskVariant==='streaming'?new ForestStreamingRenderer(this):options.bitmaskVariant==='visibility'?new ForestVisibilityRenderer(this):new ForestBitmaskRenderer(this,options.bitmaskVariant);
   }
   async initBitmask() { if(this.bitmask)await this.bitmask.init(); }
   render(now) {

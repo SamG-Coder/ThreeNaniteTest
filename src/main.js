@@ -1,3 +1,4 @@
+import {buildStoredClusterAsset} from './cluster/pageStore.js';
 import { createLandscapeScene } from './landscapeScene.js';
 import { addVoxelRoot } from './streaming/voxels.js';
 import { rasterVariant } from './bitmask/variant.js';
@@ -39,6 +40,7 @@ const frameMeter = new FrameMeter(sample => ui.updateFps(sample));
 ui.onRenderModeChange = async () => {
   frameMeter.reset(); ui.clearFps();
   if (!activeSource || sceneBuilding) return;
+  if(ui.elements.rasterizerMode.value==='bitmask-bricks'&&activeRaster!=='bitmask-bricks'){ui.elements.renderMode.value='hierarchy';ui.elements.lodThreshold.value='1';}
   const mode = ui.elements.renderMode.value;
   try {
     await rebuildScene(activeSource.geometry, activeSource.displayName, activeSource.world, true);
@@ -127,7 +129,7 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
   if(!world?.forest)ui.elements.rasterizerMode.value='hardware';
   const selectedMode=ui.elements.renderMode.value;
   const selectedRaster=ui.elements.rasterizerMode.value;
-  const mode = ui.elements.renderMode.value === 'auto' || ui.elements.renderMode.value === 'full' ? 'auto' : 'hierarchy';
+  const mode = selectedRaster==='bitmask-bricks'?'bricks':ui.elements.renderMode.value === 'auto' || ui.elements.renderMode.value === 'full' ? 'auto' : 'hierarchy';
   const sourceRecord = preserveCamera ? activeSource : { geometry, displayName, world, assets: new Map() };
   const wasWalking = gameControls?.enabled;
   const generation = ++rebuildGeneration;
@@ -136,13 +138,13 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
   ui.clearFps();
   gameControls?.setEnabled(false);
 
-  ui.showLoading(`Building ${mode === 'hierarchy' ? 'cluster hierarchy' : 'Patch LOD'}`, 'Preparing source geometry…');
+  ui.showLoading(`Building ${mode === 'bricks' ? 'triangle / sparse-brick hierarchy' : mode === 'hierarchy' ? 'cluster hierarchy' : 'Patch LOD'}`, 'Preparing source geometry…');
   ui.setAssetName(displayName);
 
   // Yield once so the loading overlay is painted before CPU-side mesh building.
   await new Promise((resolve) => requestAnimationFrame(resolve));
 
-  const buildAsset = mode === 'hierarchy' ? buildHierarchyAsset : buildNaniteLiteAsset;
+  const buildAsset = mode==='bricks'?buildStoredClusterAsset:mode === 'hierarchy' ? buildHierarchyAsset : buildNaniteLiteAsset;
   const cached = sourceRecord.assets.get(mode);
   const asset = cached?.asset ?? await buildAsset(geometry, {
     meshletsPerGroup: world ? 64 : 16,
@@ -167,7 +169,7 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
       voxelTreeAsset=await addVoxelRoot(treeAsset,world.treeGeometry);
       if(generation!==rebuildGeneration)return;
     }
-    nextPipeline = new ForestRenderer(renderer, camera, asset, selectedRaster==='bitmask-voxel'?voxelTreeAsset:treeAsset, world, stats => ui.updateStats(stats), {bitmask:selectedRaster.startsWith('bitmask'),bitmaskVariant:['bitmask-streaming','bitmask-voxel'].includes(selectedRaster)?'streaming':selectedRaster==='bitmask-visibility'?'visibility':selectedRaster==='bitmask-fast'?'fast':selectedRaster==='bitmask-bounded'?'bounded':(['bounded','fast','visibility','streaming','voxel'].includes(rasterVariant(location.search))?'original':rasterVariant(location.search)),fullGeometry:selectedMode==='full'&&selectedRaster.startsWith('bitmask')});
+    nextPipeline = new ForestRenderer(renderer, camera, asset, selectedRaster==='bitmask-voxel'?voxelTreeAsset:treeAsset, world, stats => ui.updateStats(stats), {bitmask:selectedRaster.startsWith('bitmask'),bitmaskVariant:selectedRaster==='bitmask-bricks'?'bricks':['bitmask-streaming','bitmask-voxel'].includes(selectedRaster)?'streaming':selectedRaster==='bitmask-visibility'?'visibility':selectedRaster==='bitmask-fast'?'fast':selectedRaster==='bitmask-bounded'?'bounded':(['bounded','fast','visibility','streaming','voxel'].includes(rasterVariant(location.search))?'original':rasterVariant(location.search)),fullGeometry:selectedMode==='full'&&selectedRaster.startsWith('bitmask')});
     try { await nextPipeline.initBitmask(); } catch(error) { nextPipeline.dispose(); throw error; }
     sourceRecord.assets.set(mode, { asset, treeAsset, voxelTreeAsset });
   } else {
@@ -314,8 +316,10 @@ async function initialise() {
       ui.showLoading('Preparing Willowmere Valley', 'Growing grass, placing trees and shaping the lakeshore…');
       await new Promise(resolve=>requestAnimationFrame(resolve));
       const world=createLandscapeScene(ui.elements.geometryDensity.value);
-      ui.elements.renderMode.value='full';
-      ui.elements.rasterizerMode.value='bitmask-visibility';
+      const clusters=new URLSearchParams(location.search).get('renderer')==='clusters';
+      ui.elements.renderMode.value=clusters?'hierarchy':'full';
+      ui.elements.rasterizerMode.value=clusters?'bitmask-bricks':'bitmask-visibility';
+      if(clusters)ui.elements.lodThreshold.value='1';
       await rebuildScene(world.geometry,`${world.name} · ${world.treeInstances.length/4} trees · ${world.grassClumps.toLocaleString()} grass clumps`,world);
     }catch(error){ui.showFatalError(error);}
   };

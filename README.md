@@ -1,5 +1,7 @@
 # Three.js WebGPU Geometry LOD
 
+New: [triangle / sparse-brick valley test](https://samg-coder.github.io/ThreeNaniteTest/?scene=landscape&renderer=clusters). A new source-derived cluster hierarchy, GPU work queues, compressed geometry page streaming and separate brick rasterization retain the atomic coverage/HZB path. [Implementation and validation](docs/CLUSTER_BRICKS.md). First use cooks the hierarchy in a worker; cached reloads reuse it.
+
 See the [full emulation audit](docs/EMULATION_AUDIT.md) for CPU work counts, actual SwiftShader shader execution, reproducible harnesses, and the two largest avoidable costs found. The harness experiments do not alter the deployed renderer.
 
 A runnable GPU-driven geometry prototype for **Three.js 0.185.1** and WebGPU.
