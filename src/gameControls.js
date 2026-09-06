@@ -33,17 +33,17 @@ export class GameControls {
     listen(document,'mousemove',e=>{
       if(this.enabled && document.pointerLockElement===canvas) this.look(e.movementX,e.movementY);
     });
-    let lookPointer = null, previous;
+    this.lookPointer=null;let previous;
     listen(canvas,'pointerdown',e=>{
-      if(!this.enabled || e.pointerType==='mouse' || lookPointer!==null) return;
-      lookPointer=e.pointerId; previous=[e.clientX,e.clientY]; canvas.setPointerCapture(e.pointerId);
+      if(!this.enabled || (e.pointerType==='mouse'&&e.button!==0) || this.lookPointer!==null) return;
+      this.lookPointer=e.pointerId; previous=[e.clientX,e.clientY]; canvas.setPointerCapture(e.pointerId);
     });
-    listen(canvas,'pointermove',e=>{
-      if(e.pointerId!==lookPointer || !this.enabled) return;
-      this.look(e.clientX-previous[0],e.clientY-previous[1]); previous=[e.clientX,e.clientY];
+    listen(document,'pointermove',e=>{
+      if(e.pointerId!==this.lookPointer || !this.enabled) return;
+      if(document.pointerLockElement!==canvas)this.look(e.clientX-previous[0],e.clientY-previous[1]); previous=[e.clientX,e.clientY];
     });
-    const endLook=e=>{if(e.pointerId===lookPointer) lookPointer=null;};
-    for(const type of ['pointerup','pointercancel','lostpointercapture']) listen(canvas,type,endLook);
+    const endLook=e=>{if(e.pointerId===this.lookPointer)this.lookPointer=null;};
+    for(const type of ['pointerup','pointercancel','lostpointercapture']) listen(document,type,endLook);
     let stickPointer=null;
     const updateStick=e=>{
       const rect=elements.stick.getBoundingClientRect();
@@ -63,7 +63,7 @@ export class GameControls {
     listen(elements.jump,'click',()=>this.jump());
     this.reset();
   }
-  clear() { this.keys.clear(); this.stick={x:0,y:0}; this.elements.thumb.style.transform=''; }
+  clear() { if(this.lookPointer!==null&&this.canvas.hasPointerCapture?.(this.lookPointer))this.canvas.releasePointerCapture(this.lookPointer);this.lookPointer=null;this.keys.clear(); this.stick={x:0,y:0}; this.elements.thumb.style.transform=''; }
   setEnabled(enabled) {
     this.enabled=enabled; this.clear();
     document.body.classList.toggle('walking',enabled);

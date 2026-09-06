@@ -13,7 +13,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  geometry:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        asset: [compact, high, ultra, tree]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/cache@v4
+        id: geometry-cache
+        with:
+          path: public/geometry
+          key: geometry-${{ matrix.asset }}-${{ hashFiles('src/landscapeScene.js', 'src/landscapeTree.js', 'src/cluster/buildClusterAsset.js', 'src/cluster/brickBuilder.js', 'src/cluster/cookedFormat.js', 'src/streaming/texturedPages.js', 'src/streaming/coverage.js', 'src/streaming/voxels.js', 'scripts/cook-landscape.mjs', 'package-lock.json') }}
+      - if: steps.geometry-cache.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.geometry-cache.outputs.cache-hit != 'true'
+        run: node scripts/cook-landscape.mjs ${{ matrix.asset }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geometry-${{ matrix.asset }}
+          path: public/geometry
   build:
+    needs: geometry
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +49,11 @@ jobs:
       - run: npm ci
       - run: npm run validate
       - run: npm test
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: geometry-*
+          path: public/geometry
+          merge-multiple: true
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

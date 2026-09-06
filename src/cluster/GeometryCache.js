@@ -4,7 +4,7 @@ import {pageLayout} from '../streaming/pages.js';
 export class GeometryCache{
  constructor(asset,capacityWords,upload,publish){
   this.asset=asset;this.layout=pageLayout(asset);this.upload=upload;this.publish=publish;
-  this.capacity=capacityWords;this.free=[[0,capacityWords]];this.mapping=new Map();this.resident=new Set();this.requested=new Map();this.lastUsed=new Map();this.clock=0;this.evictions=0;this.uploadedBytes=0;this.pending=null;this.loading=new Map();this.pageError=null;
+  this.capacity=capacityWords;this.free=[[0,capacityWords]];this.mapping=new Map();this.resident=new Set();this.requested=new Map();this.lastUsed=new Map();this.clock=0;this.evictions=0;this.uploadedBytes=0;this.pending=null;this.order=[];this.loading=new Map();this.pageError=null;
   for(const p of this.layout.pinned)this.load(p);this.publish();
  }
  size(id){return Math.ceil(this.asset.pageWords[id]/64)*64;}
@@ -12,6 +12,7 @@ export class GeometryCache{
  release(start,size){this.free.push([start,size]);this.free.sort((a,b)=>a[0]-b[0]);for(let i=0;i<this.free.length-1;){const a=this.free[i],b=this.free[i+1];if(a[0]+a[1]===b[0]){a[1]+=b[1];this.free.splice(i+1,1);}else i++;}}
  load(id){const size=this.size(id),offset=this.allocate(size);if(offset===null)throw Error('Geometry page arena exhausted');this.upload(id,offset,this.asset.pages[id]);this.mapping.set(id,{offset,size});this.uploadedBytes+=this.asset.pageWords[id]*4;if(this.asset.pageProvider&&!this.layout.pinned.includes(id))this.asset.pages[id]=undefined;}
  request(priorities){this.clock++;this.requested.clear();priorities.forEach((p,i)=>{if(p){this.requested.set(i,p);this.lastUsed.set(i,this.clock);}});
+  this.order=[...this.requested].sort((a,b)=>b[1]-a[1]).map(([id])=>this.layout.units[id]);
   if(this.pending&&!this.requested.has(this.pending.unit.id)){for(const id of this.pending.unit.pages.slice(0,this.pending.cursor)){const m=this.mapping.get(id);this.release(m.offset,m.size);this.mapping.delete(id);}if(this.asset.pageProvider)for(const id of this.pending.unit.pages)this.asset.pages[id]=undefined;this.pending=null;}
  }
  evict(){
@@ -27,7 +28,7 @@ export class GeometryCache{
  }
  tick(budget){let used=0;
   while(true){
-   if(!this.pending){const unit=[...this.requested].sort((a,b)=>b[1]-a[1]).map(([id])=>this.layout.units[id]).find(u=>!this.resident.has(u.id)&&u.pages.length&&(u.parent<0||this.resident.has(u.parent)));
+   if(!this.pending){const unit=this.order.find(u=>!this.resident.has(u.id)&&u.pages.length&&(u.parent<0||this.resident.has(u.parent)));
     if(!unit)break;this.pending={unit,cursor:0};this.prefetch(unit);}
    const p=this.pending;
    if(p.cursor===p.unit.pages.length){this.resident.add(p.unit.id);this.pending=null;this.publish();continue;}

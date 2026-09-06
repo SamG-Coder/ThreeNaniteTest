@@ -517,3 +517,9 @@ input[type="range"] { min-height: 44px; }
   .mode-select > span { display: none; }
   .mode-select select { max-width: 175px; font-size: .78rem; }
 }
+/* Mobile status text must not swallow the look gesture. Only actual controls
+   capture input; swiping the readout/background reaches the viewport. */
+@media (pointer: coarse) {
+  .quick-controls { pointer-events: none; }
+  .quick-controls select, .quick-controls button, .quick-controls .toggle { pointer-events: auto; }
+}

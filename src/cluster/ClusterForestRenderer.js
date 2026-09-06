@@ -7,9 +7,10 @@ import {brickVisibilityWGSL} from './brickShaders.js';
 import {brickBinWGSL} from './binShaders.js';
 import {clusterSelectionWGSL} from './selectionShaders.js';
 export class ClusterForestRenderer extends ForestStreamingRenderer{
+ resize(){super.resize();this.visibilitySignature=null;}
  get geometryWGSL(){return brickVisibilityWGSL;}
  createAssets(){
-  this.pagers=[];this.raw=new Map();this.requestPending=false;this.lastDemand=-Infinity;this.totalUploadBytes=0;this.frameUploadBytes=0;
+  this.residencyRevision=0;this.selectionRuns=0;this.visibilityRuns=0;this.pagers=[];this.raw=new Map();this.requestPending=false;this.lastDemand=-Infinity;this.totalUploadBytes=0;this.frameUploadBytes=0;
   return this.forest.pipelines.map(p=>{
    const layout=pageLayout(p.asset),size=id=>Math.ceil(p.asset.pageWords[id]/64)*256;
    const pinned=layout.pinned.reduce((n,i)=>n+size(i),0),largest=Math.max(...layout.units.map(u=>u.pages.reduce((n,i)=>n+size(i),0)));
@@ -20,7 +21,7 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
    let dirty=true;
    const pager=new GeometryCache(p.asset,bytes/4,(cluster,offset,page)=>{
     this.device.queue.writeBuffer(vertices,offset*4,page);table.set([offset,0,p.asset.clusterLod[cluster],p.asset.clusterKinds[cluster]],cluster*4);this.device.queue.writeBuffer(indices,cluster*16,table.subarray(cluster*4,cluster*4+4));
-   },()=>{dirty=true;});
+   },()=>{dirty=true;this.residencyRevision++;});
    const flush=()=>{if(dirty){this.device.queue.writeBuffer(metadata,0,pager.metadata());dirty=false;}};
    const demand=this.makeBuffer(p.asset.groupCount*4,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
    flush();this.pagers.push({pager,p,flush,demand,metadata,bytes});return{vertices,indices};
@@ -69,6 +70,9 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
   for(const p of this.forest.pipelines)p.updateCameraUniforms();
   const f=new Float32Array(this.uniformBytes),u=new Uint32Array(this.uniformBytes);f.set(this.forest.terrain.projScreenMatrix.elements);f.set([...this.camera.position.toArray(),1],16);u.set([this.width,this.height,this.tilesX,this.tilesX*this.tilesY],20);u.set([0,0,0,65535],28);this.device.queue.writeBuffer(this.uniform,0,this.uniformBytes);
   const inverse=new THREE.Matrix4().copy(this.forest.terrain.projScreenMatrix).invert();this.device.queue.writeBuffer(this.inverse,0,new Float32Array(inverse.elements));
+  const signature=[...this.forest.terrain.projScreenMatrix.elements,this.width,this.height,this.residencyRevision,...this.forest.pipelines.map(p=>p.fullGeometry?0:p.settings.lodThreshold)].join(',');
+  if(signature===this.selectionSignature){this.probe.mark(1);this.wantDemand=this.demandDirty&&!this.requestPending&&now-this.lastDemand>=50;if(this.wantDemand)this.demandDirty=false;return true;}
+  this.selectionSignature=signature;this.selectionRuns++;this.demandDirty=true;
   const encoder=this.device.createCommandEncoder({label:'GPU cluster traversal'});
   for(const s of this.selectionResources){
    const p=s.p,bytes=new ArrayBuffer(128),f=new Float32Array(bytes),u=new Uint32Array(bytes);
@@ -77,9 +81,13 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
    pass('initialize',s.initialize,Math.ceil(Math.max(p.instanceCount,p.asset.groupCount+6)/64));
    for(let level=0;level<p.asset.hierarchyDepth;level++){pass('prepareLevel',s.prepare,1);encoder.copyBufferToBuffer(s.resources[7],8,s.indirect,0,12);pass('traverse',s.traverse[level%2],0,true);pass('advanceLevel',s.advance,1);}
   }
-  this.device.queue.submit([encoder.finish()]);this.probe.mark(1);this.wantDemand=!this.requestPending&&now-this.lastDemand>=50;return true;
+  this.device.queue.submit([encoder.finish()]);this.probe.mark(1);this.wantDemand=!this.requestPending&&now-this.lastDemand>=50;if(this.wantDemand)this.demandDirty=false;return true;
  }
  encodeVisibility(encoder,a,b){
+  const signature=`${this.selectionRuns}:${this.outputMode}:${this.hzbEnabled}`;
+  this.visibilityReused=signature===this.visibilitySignature&&!this.resetHistory;
+  if(this.visibilityReused){if(this.wantDemand)for(const {p,demand}of this.pagers)encoder.copyBufferToBuffer(this.sharedBuffer(p.lodCounterAttribute),24,demand,0,p.asset.groupCount*4);return;}
+  this.visibilitySignature=signature;this.visibilityRuns++;
   this.device.queue.writeBuffer(this.config,0,new Uint32Array([a.asset.totalClusters,b.asset.totalClusters,this.terrainWords,this.hzbEnabled?1:0]));
   const dispatch=(name,x,y=1,group=this.groups[name],indirect=false)=>{const p=encoder.beginComputePass({label:name});p.setPipeline(this.compute[name]);p.setBindGroup(0,group);if(indirect)p.dispatchWorkgroupsIndirect(this.argumentsBuffer,32);else p.dispatchWorkgroups(x,y);p.end();};
   const draw=phase=>{
@@ -98,7 +106,7 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
   this.reading=true;this.lastReadback=now;const generation=this.generation;
   this.readback.mapAsync(GPUMapMode.READ).then(()=>{const c=new Uint32Array(this.readback.getMappedRange()).slice();this.readback.unmap();if(this.disposed||generation!==this.generation)return;
    const sum=fn=>this.forest.pipelines.reduce((s,p)=>s+fn(p),0);
-   this.metrics={visibility:true,variant:'triangle / sparse-brick hierarchy',seed:c[2],recovery:c[3],culled:c[5],covered:c[4],triangleClusters:c[6],brickClusters:c[7],submittedTriangles:c[6]*64,streaming:{bytes:this.pagers.reduce((s,p)=>s+p.bytes,0),pages:this.pagers.reduce((s,p)=>s+p.pager.mapping.size,0)},overflowTiles:0};
+   this.metrics={visibility:true,reused:this.visibilityReused,variant:'triangle / sparse-brick hierarchy',seed:c[2],recovery:c[3],culled:c[5],covered:c[4],triangleClusters:c[6],brickClusters:c[7],submittedTriangles:c[6]*64,streaming:{bytes:this.pagers.reduce((s,p)=>s+p.bytes,0),pages:this.pagers.reduce((s,p)=>s+p.pager.mapping.size,0)},overflowTiles:0};
    this.forest.onStats({naniteEnabled:true,sourceTriangles:sum(p=>p.asset.sourceTriangleCount),sourceSceneTriangles:sum(p=>p.asset.sourceTriangleCount*p.instanceCount),submittedTriangles:c[6]*64,visibleMeshlets:c[2]+c[3],capacity:sum(p=>p.maxVisibleClusters),instances:sum(p=>p.instanceCount),groups:sum(p=>p.asset.groupCount),assetBytes:sum(p=>p.asset.bytes),lockedVertices:0,overflowed:Boolean(c[8]||c[9]),lodCounts:[c[6],c[7],0,0,0,0],bitmask:this.metrics});
   }).catch(e=>{if(!this.disposed)console.warn(e);}).finally(()=>{this.reading=false;if(this.disposed)this.readback.destroy();});
  }

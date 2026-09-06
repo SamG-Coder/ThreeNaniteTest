@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import assert from 'node:assert/strict';
 import {deserialize} from 'node:v8';
 import {createLandscapeTree} from '../../src/landscapeTree.js';
 const realTree=process.argv.includes('--tree');
@@ -31,4 +32,9 @@ for(const [distance,threshold]of (realTree?[[12,1],[80,1],[160,1]]:[[6,0],[6,1],
  fs.writeFileSync(`/tmp/cluster-${distance}-${threshold}.rgba`,new Uint8Array(pixels.buffer,pixels.byteOffset,pixels.byteLength));
  report.push({distance,threshold,stats});console.log(JSON.stringify(report.at(-1)));
 }
+const stationary=[forest.bitmask.selectionRuns,forest.bitmask.visibilityRuns];
+for(let i=0;i<2;i++){forest.render(clock+=1000);await device.queue.onSubmittedWorkDone();await new Promise(r=>setTimeout(r,0));}
+assert.deepEqual([forest.bitmask.selectionRuns,forest.bitmask.visibilityRuns],stationary,'stationary geometry must reuse traversal and visibility');
+camera.rotation.y+=.2;camera.updateMatrixWorld();forest.render(clock+=1000);await device.queue.onSubmittedWorkDone();assert.ok(forest.bitmask.selectionRuns>stationary[0]);assert.ok(forest.bitmask.visibilityRuns>stationary[1]);
+console.log(JSON.stringify({stationaryReused:true,rotationInvalidates:true}));
 fs.writeFileSync('/tmp/cluster-renderer-report.json',JSON.stringify({width,height,errors,report},null,2));forest.dispose();renderer.dispose();device.destroy();if(errors.length)throw Error(`${errors.length} GPU validation errors`);

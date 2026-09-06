@@ -147,6 +147,7 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
   const buildAsset = mode==='bricks'?buildStoredClusterAsset:mode === 'hierarchy' ? buildHierarchyAsset : buildNaniteLiteAsset;
   const cached = sourceRecord.assets.get(mode);
   const asset = cached?.asset ?? await buildAsset(geometry, {
+    cookedName:world?.landscape?`valley-${world.density}`:undefined,
     meshletsPerGroup: world ? 64 : 16,
     onProgress(title, detail) {
       if (generation === rebuildGeneration) ui.updateLoading(title, detail);
@@ -158,6 +159,7 @@ async function rebuildScene(geometry, displayName, world = null, preserveCamera 
   let nextPipeline;
   if (world?.forest) {
     const treeAsset = cached?.treeAsset ?? await buildAsset(world.treeGeometry, {
+      cookedName:world?.landscape?'valley-tree':undefined,
       meshletsPerGroup: 64,
       onProgress(title, detail) { ui.updateLoading(`Forest · ${title}`, detail); }
     });

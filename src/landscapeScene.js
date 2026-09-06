@@ -87,7 +87,7 @@ export function createLandscapeScene(density='high'){
   g.computeVertexNormals();colored(g,new THREE.Color(0x858a7c));g.rotateY(random()*Math.PI);g.translate(x,y+size*.14,z);parts.push(g);obstacles.push({x,z,radius:size*.75});
  }
  const geometry=mergeGeometries(parts,false);for(const part of parts)part.dispose();geometry.computeBoundingSphere();geometry.computeBoundingBox();
- return {name:'Willowmere Valley',landscape:true,forest:true,geometry,treeGeometry:createLandscapeTree(),treeInstances:new Float32Array(data),
+ return {density,name:'Willowmere Valley',landscape:true,forest:true,geometry,treeGeometry:createLandscapeTree(),treeInstances:new Float32Array(data),
   obstacles,heightAt:landscapeHeight,blockedAt:(x,z)=>landscapeHeight(x,z)<.65,spawn:[30,0,14],spawnYaw:Math.atan2(30,26),spawnPitch:-.09,bounds:106,
   grassClumps:grass.clumps,water:{x:0,z:-12,y:.35,radius:39,scaleX:1.3,scaleZ:.86}};
 }

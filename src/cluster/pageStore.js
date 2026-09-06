@@ -1,3 +1,4 @@
+import {loadCookedAsset} from './cookedAsset.js';
 import * as THREE from 'three/webgpu';
 import {buildClusterAsset} from './buildClusterAsset.js';
 import {pageLayout} from '../streaming/pages.js';
@@ -27,6 +28,7 @@ async function cook(g,options){
  });
 }
 export async function buildStoredClusterAsset(g,options={}){
+ if(options.cookedName){try{const cooked=await loadCookedAsset(options.cookedName,options.onProgress);if(cooked)return cooked;}catch(error){console.warn('Prepared geometry unavailable; building locally',error);}}
  if(typeof indexedDB==='undefined'||typeof CompressionStream==='undefined'||!globalThis.crypto?.subtle)return cook(g,options);
  let db,key,asset;
  try{
