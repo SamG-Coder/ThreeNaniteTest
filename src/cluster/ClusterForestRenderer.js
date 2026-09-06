@@ -18,11 +18,11 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
    if(bytes>this.device.limits.maxStorageBufferBindingSize)throw Error('Cluster geometry cache exceeds device limits; choose lower density');
    const vertices=this.makeBuffer(bytes,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST),indices=this.makeBuffer(p.asset.totalClusters*16,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST),table=new Uint32Array(p.asset.totalClusters*4);
    const metadata=this.makeBuffer(p.asset.groupLods.byteLength,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST,p.asset.groupLods);
-   let dirty=true;
+   let dirty=true;const dirtyNodes=new Set();
    const pager=new GeometryCache(p.asset,bytes/4,(cluster,offset,page)=>{
     this.device.queue.writeBuffer(vertices,offset*4,page);table.set([offset,0,p.asset.clusterLod[cluster],p.asset.clusterKinds[cluster]],cluster*4);this.device.queue.writeBuffer(indices,cluster*16,table.subarray(cluster*4,cluster*4+4));
-   },()=>{dirty=true;this.residencyRevision++;});
-   const flush=()=>{if(dirty){this.device.queue.writeBuffer(metadata,0,pager.metadata());dirty=false;}};
+   },id=>{if(id===undefined)dirty=true;else dirtyNodes.add(id);this.residencyRevision++;});
+   const flush=()=>{const table=pager.metadata();if(dirty){this.device.queue.writeBuffer(metadata,0,table);dirty=false;}else for(const id of dirtyNodes)this.device.queue.writeBuffer(metadata,(id*24+5)*4,table.buffer,table.byteOffset+(id*24+5)*4,4);dirtyNodes.clear();};
    const demand=this.makeBuffer(p.asset.groupCount*4,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
    flush();this.pagers.push({pager,p,flush,demand,metadata,bytes});return{vertices,indices};
   });
