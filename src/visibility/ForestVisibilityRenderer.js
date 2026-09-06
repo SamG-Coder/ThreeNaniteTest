@@ -69,7 +69,8 @@ export class ForestVisibilityRenderer extends ForestBitmaskRenderer {
     this.groups.coverage=group(this.compute.coverage,geometry,[0,10,13,17]);
     const materialBindings=this.materialSampler?[22,23,24]:[];
     if(this.materialSampler){geometry[22]=view(this.forest.landscapeTexture);geometry[23]=this.materialSampler;geometry[24]=this.barycentrics.createView();}
-    this.groups.shadeVisible=group(this.compute.shadeVisible,geometry,[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16,...materialBindings]);
+    this.extendShadeResources?.(geometry);
+    this.groups.shadeVisible=group(this.compute.shadeVisible,geometry,[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15,16,...materialBindings,...(this.shadeBindings??[])]);
     this.drawGroups=[this.seedList,this.recoveryList].map(list=>group(this.visibilityPipeline,{...common,9:resource(list)},[0,1,2,3,4,5,6,7,8,9]));
     this.groups.base=group(this.compute.base,{0:this.hardwareDepth.createView(),1:this.hzb.createView({baseMipLevel:0,mipLevelCount:1}),2:resource(this.atomicBits),3:resource(this.dimensions)},[0,1,2,3]);
     this.reduceGroups=Array.from({length:this.pyramidLevels-1},(_,i)=>group(this.compute.reduce,{0:this.hzb.createView({baseMipLevel:i,mipLevelCount:1}),1:this.hzb.createView({baseMipLevel:i+1,mipLevelCount:1})},[0,1]));

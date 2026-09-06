@@ -306,3 +306,12 @@ reflection, shallow/deep color, sun highlights and shoreline foam.
 
 Touch controls are supported. The old forest remains available for comparison.
 [Scene, shader details and validation](docs/WILLOWMERE_VALLEY.md).
+
+### Optional cluster shadows and water reflections
+
+[Try cluster lighting in Willowmere](https://samg-coder.github.io/ThreeNaniteTest/?scene=landscape&renderer=clusters).
+Under Controls, enable **Cluster ray shadows** or **Cluster water reflections**.
+Both default off. They reuse resident triangle/brick pages and preserve atomic
+coverage/HZB, with quarter-resolution ray queries and no second full geometry render.
+Off-screen detail depends on resident pages; mobile performance is unverified.
+[Implementation and limitations](docs/CLUSTER_LIGHTING.md).

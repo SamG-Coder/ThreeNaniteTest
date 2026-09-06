@@ -1,3 +1,4 @@
+import {ClusterLighting,litBrickWGSL} from '../lighting/ClusterLighting.js';
 import * as THREE from 'three/webgpu';
 import {ForestStreamingRenderer} from '../streaming/ForestStreamingRenderer.js';
 import {ForestVisibilityRenderer} from '../visibility/ForestVisibilityRenderer.js';
@@ -7,8 +8,11 @@ import {brickVisibilityWGSL} from './brickShaders.js';
 import {brickBinWGSL} from './binShaders.js';
 import {clusterSelectionWGSL} from './selectionShaders.js';
 export class ClusterForestRenderer extends ForestStreamingRenderer{
- resize(){super.resize();this.visibilitySignature=null;}
- get geometryWGSL(){return brickVisibilityWGSL;}
+ resize(){super.resize();this.visibilitySignature=null;this.rayLighting?.resize();}
+ get geometryWGSL(){return litBrickWGSL;}
+ get shadeBindings(){return [30,31];}
+ extendShadeResources(resources){resources[30]=this.renderer.backend.get(this.rayLighting.shadow).texture.createView();resources[31]={buffer:this.rayLighting.flags};}
+ dispose(){this.rayLighting?.dispose();super.dispose();}
  createAssets(){
   this.residencyRevision=0;this.selectionRuns=0;this.visibilityRuns=0;this.pagers=[];this.raw=new Map();this.requestPending=false;this.lastDemand=-Infinity;this.totalUploadBytes=0;this.frameUploadBytes=0;
   return this.forest.pipelines.map(p=>{
@@ -29,6 +33,8 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
  }
  sharedBuffer(attribute){return this.raw.get(attribute)??super.sharedBuffer(attribute);}
  async init(){
+  this.rayLighting=new ClusterLighting(this);await this.rayLighting.init();
+  if(this.forest.world.landscape)this.forest.connectWaterLighting(this.rayLighting.waterHooks());
   await ForestVisibilityRenderer.prototype.init.call(this);
   const module=this.device.createShaderModule({code:brickVisibilityWGSL});
   this.brickPipeline=await this.device.createRenderPipelineAsync({layout:'auto',vertex:{module,entryPoint:'brickVertex'},fragment:{module,entryPoint:'brickFragment',targets:[{format:'r32uint'},{format:'rg32float'}]},primitive:{topology:'triangle-list',cullMode:'none'},depthStencil:{format:'depth32float',depthWriteEnabled:true,depthCompare:'less'}});
@@ -84,7 +90,7 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
   this.device.queue.submit([encoder.finish()]);this.probe.mark(1);this.wantDemand=!this.requestPending&&now-this.lastDemand>=50;if(this.wantDemand)this.demandDirty=false;return true;
  }
  encodeVisibility(encoder,a,b){
-  const signature=`${this.selectionRuns}:${this.outputMode}:${this.hzbEnabled}`;
+  const signature=`${this.selectionRuns}:${this.outputMode}:${this.hzbEnabled}:${this.rayLighting.revision}`;
   this.visibilityReused=signature===this.visibilitySignature&&!this.resetHistory;
   if(this.visibilityReused){if(this.wantDemand)for(const {p,demand}of this.pagers)encoder.copyBufferToBuffer(this.sharedBuffer(p.lodCounterAttribute),24,demand,0,p.asset.groupCount*4);return;}
   this.visibilitySignature=signature;this.visibilityRuns++;
@@ -98,7 +104,7 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
   dispatch('clearFrame',Math.ceil(Math.max(16,this.tilesX*this.tilesY*2)/64));if(this.resetHistory){dispatch('clearHistory',Math.ceil(this.historyWords/64));this.resetHistory=false;}
   dispatch('arguments',1);dispatch('seed',0,1,this.groups.seed,true);dispatch('arguments',1);draw(0);dispatch('coverage',this.tilesX,this.tilesY);dispatch('base',Math.ceil(this.pyramidSize/8),Math.ceil(this.pyramidSize/8));
   for(let i=0;i<this.reduceGroups.length;i++){const size=this.pyramidSize/2**(i+1);dispatch('reduce',Math.ceil(size/8),Math.ceil(size/8),this.reduceGroups[i]);}
-  dispatch('recover',0,1,this.groups.recover,true);dispatch('arguments',1);draw(1);dispatch('clearHistory',Math.ceil(this.historyWords/64));dispatch('shadeVisible',this.tilesX,this.tilesY);
+  dispatch('recover',0,1,this.groups.recover,true);dispatch('arguments',1);draw(1);dispatch('clearHistory',Math.ceil(this.historyWords/64));this.rayLighting.encode(encoder);dispatch('shadeVisible',this.tilesX,this.tilesY);
   this.selectionResources.forEach((s,i)=>encoder.copyBufferToBuffer(s.resources[7],28,this.control,32+i*4,4));
   if(this.wantDemand)for(const {p,demand}of this.pagers)encoder.copyBufferToBuffer(this.sharedBuffer(p.lodCounterAttribute),24,demand,0,p.asset.groupCount*4);
  }
@@ -106,7 +112,7 @@ export class ClusterForestRenderer extends ForestStreamingRenderer{
   this.reading=true;this.lastReadback=now;const generation=this.generation;
   this.readback.mapAsync(GPUMapMode.READ).then(()=>{const c=new Uint32Array(this.readback.getMappedRange()).slice();this.readback.unmap();if(this.disposed||generation!==this.generation)return;
    const sum=fn=>this.forest.pipelines.reduce((s,p)=>s+fn(p),0);
-   this.metrics={visibility:true,reused:this.visibilityReused,variant:'triangle / sparse-brick hierarchy',seed:c[2],recovery:c[3],culled:c[5],covered:c[4],triangleClusters:c[6],brickClusters:c[7],submittedTriangles:c[6]*64,streaming:{bytes:this.pagers.reduce((s,p)=>s+p.bytes,0),pages:this.pagers.reduce((s,p)=>s+p.pager.mapping.size,0)},overflowTiles:0};
+   this.metrics={visibility:true,reused:this.visibilityReused,lighting:{shadows:this.rayLighting.shadows,reflections:this.rayLighting.reflections,rays:c[10]+c[11],limited:c[12]},variant:'triangle / sparse-brick hierarchy',seed:c[2],recovery:c[3],culled:c[5],covered:c[4],triangleClusters:c[6],brickClusters:c[7],submittedTriangles:c[6]*64,streaming:{bytes:this.pagers.reduce((s,p)=>s+p.bytes,0),pages:this.pagers.reduce((s,p)=>s+p.pager.mapping.size,0)},overflowTiles:0};
    this.forest.onStats({naniteEnabled:true,sourceTriangles:sum(p=>p.asset.sourceTriangleCount),sourceSceneTriangles:sum(p=>p.asset.sourceTriangleCount*p.instanceCount),submittedTriangles:c[6]*64,visibleMeshlets:c[2]+c[3],capacity:sum(p=>p.maxVisibleClusters),instances:sum(p=>p.instanceCount),groups:sum(p=>p.asset.groupCount),assetBytes:sum(p=>p.asset.bytes),lockedVertices:0,overflowed:Boolean(c[8]||c[9]),lodCounts:[c[6],c[7],0,0,0,0],bitmask:this.metrics});
   }).catch(e=>{if(!this.disposed)console.warn(e);}).finally(()=>{this.reading=false;if(this.disposed)this.readback.destroy();});
  }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {deserialize} from 'node:v8';
 import {createLandscapeTree} from '../../src/landscapeTree.js';
 const realTree=process.argv.includes('--tree');
+const lightingTest=process.argv.includes('--lighting');
 import * as THREE from 'three/webgpu';
 import {create,globals} from 'webgpu';
 import {buildClusterAsset} from '../../src/cluster/buildClusterAsset.js';
@@ -19,6 +20,7 @@ const target=new THREE.RenderTarget(width,height,{type:THREE.UnsignedByteType});
 const decorate=(g,material,color)=>{const c=new THREE.Color(color);g.setAttribute('color',new THREE.Float32BufferAttribute(Array.from({length:g.attributes.position.count},()=>c.toArray()).flat(),3));g.setAttribute('surface',new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count).fill(material),1));return g;};
 const ground=decorate(new THREE.PlaneGeometry(14,14,12,12).rotateX(-Math.PI/2),0,0x67844c),tree=realTree?createLandscapeTree():decorate(new THREE.SphereGeometry(1,24,16).translate(0,1.5,0),3,0x698738);
 const world={forest:true,geometry:ground,treeGeometry:tree,treeInstances:new Float32Array([0,0,0,1,2,0,-3,1])};
+if(lightingTest)Object.assign(world,{landscape:true,heightAt:()=>0,water:{x:0,y:.25,z:0,radius:6,scaleX:1,scaleZ:1}});
 const treeAsset=realTree&&fs.existsSync('/tmp/cluster-tree.v8')?deserialize(fs.readFileSync('/tmp/cluster-tree.v8')):await buildClusterAsset(tree);
 for(const name of ['sourceColors','sourceSurface'])if(!treeAsset[name].getX)treeAsset[name]=new THREE.BufferAttribute(treeAsset[name].array,treeAsset[name].itemSize);
 const assets=[await buildClusterAsset(ground),treeAsset];
@@ -37,4 +39,17 @@ for(let i=0;i<2;i++){forest.render(clock+=1000);await device.queue.onSubmittedWo
 assert.deepEqual([forest.bitmask.selectionRuns,forest.bitmask.visibilityRuns],stationary,'stationary geometry must reuse traversal and visibility');
 camera.rotation.y+=.2;camera.updateMatrixWorld();forest.render(clock+=1000);await device.queue.onSubmittedWorkDone();assert.ok(forest.bitmask.selectionRuns>stationary[0]);assert.ok(forest.bitmask.visibilityRuns>stationary[1]);
 console.log(JSON.stringify({stationaryReused:true,rotationInvalidates:true}));
+if(lightingTest){
+ camera.position.set(0,2,6);camera.lookAt(0,1,0);camera.updateMatrixWorld();
+ const lighting=forest.bitmask.rayLighting;
+ for(const [shadows,reflections]of [[true,false],[false,true],[true,true],[false,false]]){
+  lighting.set('shadows',shadows);lighting.set('reflections',reflections);
+  for(let frame=0;frame<4;frame++){forest.render(clock+=1000);await device.queue.onSubmittedWorkDone();await new Promise(r=>setTimeout(r,0));}
+  const pixels=await renderer.readRenderTargetPixelsAsync(target,0,0,width,height);fs.writeFileSync(`/tmp/lighting-${shadows}-${reflections}.rgba`,new Uint8Array(pixels.buffer,pixels.byteOffset,pixels.byteLength));
+  async function readLighting(texture,bytesPerPixel){const row=Math.ceil(lighting.width*bytesPerPixel/256)*256,buffer=device.createBuffer({size:row*lighting.height,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ}),encoder=device.createCommandEncoder();encoder.copyTextureToBuffer({texture:renderer.backend.get(texture).texture},{buffer,bytesPerRow:row},{width:lighting.width,height:lighting.height});device.queue.submit([encoder.finish()]);await buffer.mapAsync(GPUMapMode.READ);const data=new Uint8Array(buffer.getMappedRange()).slice();buffer.unmap();buffer.destroy();return {data,row};}
+  if(shadows){const {data,row}=await readLighting(lighting.shadow,4),view=new DataView(data.buffer);let blocked=0,lit=0;for(let y=0;y<lighting.height;y++)for(let x=0;x<lighting.width;x++){const value=view.getFloat32(y*row+x*4,true);if(value===0)blocked++;if(value===1)lit++;}assert.ok(blocked>0&&lit>0,'shadow rays must distinguish blocked and unblocked receivers');}
+  if(reflections){const {data,row}=await readLighting(lighting.reflection,8),view=new DataView(data.buffer);let hits=0;for(let y=0;y<lighting.height;y++)for(let x=0;x<lighting.width;x++)if(view.getUint16(y*row+x*8+6,true)===0x3c00)hits++;assert.ok(hits>0,'water rays must hit scene geometry');}
+  console.log(JSON.stringify({shadows,reflections,stats:stats.bitmask.lighting}));
+ }
+}
 fs.writeFileSync('/tmp/cluster-renderer-report.json',JSON.stringify({width,height,errors,report},null,2));forest.dispose();renderer.dispose();device.destroy();if(errors.length)throw Error(`${errors.length} GPU validation errors`);

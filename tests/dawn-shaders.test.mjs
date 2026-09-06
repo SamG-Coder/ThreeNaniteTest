@@ -1,3 +1,5 @@
+import {rayLightingWGSL} from '../src/lighting/rayShaders.js';
+import {litBrickWGSL} from '../src/lighting/ClusterLighting.js';
 import {brickVisibilityWGSL} from '../src/cluster/brickShaders.js';
 import {clusterSelectionWGSL} from '../src/cluster/selectionShaders.js';
 import {brickBinWGSL} from '../src/cluster/binShaders.js';
@@ -15,7 +17,7 @@ test('production visibility shaders compile with Chromium Dawn/Tint',async()=>{
  // not prove GPU execution or validate device-specific render pipelines.
  const gpu=create(['backend=null']),adapter=await gpu.requestAdapter(),device=await adapter.requestDevice();
  try{
-  for(const [name,code]of Object.entries({brickVisibilityWGSL,clusterSelectionWGSL,brickBinWGSL,texturedPagedWGSL,landscapeVisibilityWGSL,pagedVisibilityWGSL,pagedOpaqueVisibilityWGSL,visibilityWGSL,cullWGSL,pyramidWGSL,pyramidBaseWGSL,depthOrderWGSL})){
+  for(const [name,code]of Object.entries({rayLightingWGSL,litBrickWGSL,brickVisibilityWGSL,clusterSelectionWGSL,brickBinWGSL,texturedPagedWGSL,landscapeVisibilityWGSL,pagedVisibilityWGSL,pagedOpaqueVisibilityWGSL,visibilityWGSL,cullWGSL,pyramidWGSL,pyramidBaseWGSL,depthOrderWGSL})){
    const module=device.createShaderModule({code,label:name}),info=await module.getCompilationInfo();
    assert.deepEqual(info.messages.filter(m=>m.type==='error').map(m=>`${m.lineNum}: ${m.message}`),[],name);
   }

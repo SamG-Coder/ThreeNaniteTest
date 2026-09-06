@@ -19,7 +19,7 @@ function skyRadiance(direction){
  const cloud=smoothstep(.25,.58,cloudField).mul(smoothstep(.06,.2,elevation)).mul(.65);
  return mix(sky,vec3(.8,.84,.79),cloud).add(vec3(1,.76,.43).mul(pow(alignment,512).mul(3.5).add(pow(alignment,24).mul(.12))));
 }
-export function createLandscapeWater(world){
+export function createLandscapeWater(world,lighting=null){
  const spec=world.water;
  const geometry=new THREE.PlaneGeometry(spec.radius*2*spec.scaleX,spec.radius*2*spec.scaleZ,160,112).rotateX(-Math.PI/2);
  const p=geometry.attributes.position,depth=new Float32Array(p.count);
@@ -43,9 +43,10 @@ export function createLandscapeWater(world){
   // Sunlit ripples on the shallow bed are procedural; no second scene render.
   const caustic=pow(max(sin(positionWorld.x.mul(2.1).add(time.mul(.6))).mul(cos(positionWorld.z.mul(2.6).sub(time.mul(.7)))),0),6)
     .mul(exp(waterDepth.mul(-.8))).mul(.07);
-  const water=mix(bed.add(caustic),skyRadiance(reflection),fresnel).toVar();
+  const sunVisibility=lighting?lighting.sun():float(1);
+  const water=mix(bed.add(caustic).mul(float(.65).add(sunVisibility.mul(.35))),(lighting?lighting.reflection(normal,skyRadiance(reflection)):skyRadiance(reflection)),fresnel).toVar();
   const sun=normalize(vec3(.5,1,.35)),half=normalize(sun.add(view));
-  water.addAssign(vec3(1,.83,.57).mul(pow(max(dot(normal,half),0),320)).mul(1.8));
+  water.addAssign(vec3(1,.83,.57).mul(pow(max(dot(normal,half),0),320)).mul(1.8).mul(sunVisibility));
   const shore=float(1).sub(smoothstep(.03,.6,waterDepth));
   const ripple=sin(waterDepth.mul(20).sub(time.mul(1.7)).add(sin(positionWorld.x.mul(.8)).mul(.8)));
   const foam=shore.mul(smoothstep(.45,.95,ripple)).mul(.5);

@@ -12,7 +12,7 @@ import { NaniteLiteRenderer } from './NaniteLiteRenderer.js';
 // camera and presentation pass; the original indexed instances are the baseline.
 export class ForestRenderer {
   constructor(renderer, camera, terrainAsset, treeAsset, world, onStats, options = {}) {
-    this.samples = new Map(); this.enabled = true; this.onStats = onStats;
+    this.world=world;this.samples = new Map(); this.enabled = true; this.onStats = onStats;
     const receive = key => stats => {
       if (stats.naniteEnabled !== this.enabled) return;
       this.samples.set(key,stats);
@@ -65,6 +65,7 @@ export class ForestRenderer {
     }
     if(options.bitmask)this.bitmask=options.bitmaskVariant==='bricks'?new ClusterForestRenderer(this):options.bitmaskVariant==='streaming'?new ForestStreamingRenderer(this):options.bitmaskVariant==='visibility'?new ForestVisibilityRenderer(this):new ForestBitmaskRenderer(this,options.bitmaskVariant);
   }
+  connectWaterLighting(hooks){const old=this.water;this.terrain.scene.remove(old);this.water=createLandscapeWater(this.world,hooks);this.terrain.scene.add(this.water);old.geometry.dispose();old.material.dispose();}
   async initBitmask() { if(this.bitmask)await this.bitmask.init(); }
   render(now) {
     if(this.sky)this.sky.position.copy(this.terrain.camera.position);
